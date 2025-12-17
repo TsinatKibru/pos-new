@@ -27,52 +27,41 @@ interface SidebarLink {
 }
 
 
-const sidebarLinks: SidebarLink[] = [
+interface SidebarSection {
+    title: string;
+    items: SidebarLink[];
+}
+
+const sidebarSections: SidebarSection[] = [
     {
-        title: "Dashboard",
-        href: "/dashboard",
-        icon: LayoutDashboard,
+        title: "Overview",
+        items: [
+            { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard },
+            { title: "Point of Sale", href: "/pos", icon: ShoppingCart },
+        ]
     },
     {
-        title: "Point of Sale",
-        href: "/pos",
-        icon: ShoppingCart,
+        title: "Business",
+        items: [
+            { title: "Sales History", href: "/sales", icon: History },
+            { title: "Inventory", href: "/inventory", icon: Package },
+            { title: "Customers", href: "/customers", icon: Users },
+        ]
     },
     {
-        title: "Sales History",
-        href: "/sales",
-        icon: History,
+        title: "Management",
+        items: [
+            { title: "Products", href: "/products", icon: Tags },
+            { title: "Staff", href: "/users", icon: Shield },
+        ]
     },
     {
-        title: "Inventory",
-        href: "/inventory",
-        icon: Package,
-    },
-    {
-        title: "Products",
-        href: "/products",
-        icon: Tags,
-    },
-    {
-        title: "Customers",
-        href: "/customers",
-        icon: Users,
-    },
-    {
-        title: "Staff",
-        href: "/users",
-        icon: Shield,
-    },
-    {
-        title: "Settings",
-        href: "/settings",
-        icon: Settings,
-    },
-    {
-        title: "Profile",
-        href: "/profile",
-        icon: User,
-    },
+        title: "System",
+        items: [
+            { title: "Profile", href: "/profile", icon: User },
+            { title: "Settings", href: "/settings", icon: Settings },
+        ]
+    }
 ];
 
 export function Sidebar() {
@@ -88,34 +77,50 @@ export function Sidebar() {
                 </div>
             </div>
 
-            <div className="flex-1 px-4 space-y-2">
-                {sidebarLinks.map((link) => {
-                    // Role-based filtering
-                    if (session?.user?.role !== 'ADMIN') {
-                        // Hide these for non-admins
-                        if (['/users', '/settings', '/products'].includes(link.href)) {
-                            return null;
+            <div className="flex-1 px-4 space-y-6 overflow-y-auto py-2">
+                {sidebarSections.map((section, idx) => {
+                    // Filter items based on role
+                    const visibleItems = section.items.filter(link => {
+                        if (session?.user?.role !== 'ADMIN') {
+                            if (['/users', '/settings', '/products'].includes(link.href)) {
+                                return false;
+                            }
                         }
-                    }
+                        return true;
+                    });
 
-                    const Icon = link.icon;
-                    const isActive = pathname === link.href;
+                    // Don't render empty sections
+                    if (visibleItems.length === 0) return null;
 
                     return (
-                        <Link
-                            key={link.href}
-                            href={link.disabled ? "#" : link.href}
-                            className={cn(
-                                "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium",
-                                isActive
-                                    ? "bg-blue-600 text-white"
-                                    : "text-slate-400 hover:text-white hover:bg-slate-800",
-                                link.disabled && "opacity-50 cursor-not-allowed hover:bg-transparent hover:text-slate-400"
-                            )}
-                        >
-                            <Icon className="h-5 w-5" />
-                            {link.title}
-                        </Link>
+                        <div key={idx}>
+                            <h3 className="mb-2 px-3 text-xs font-semibold uppercase tracking-wider text-slate-500">
+                                {section.title}
+                            </h3>
+                            <div className="space-y-1">
+                                {visibleItems.map((link) => {
+                                    const Icon = link.icon;
+                                    const isActive = pathname === link.href;
+
+                                    return (
+                                        <Link
+                                            key={link.href}
+                                            href={link.disabled ? "#" : link.href}
+                                            className={cn(
+                                                "flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium",
+                                                isActive
+                                                    ? "bg-blue-600 text-white"
+                                                    : "text-slate-400 hover:text-white hover:bg-slate-800",
+                                                link.disabled && "opacity-50 cursor-not-allowed hover:bg-transparent hover:text-slate-400"
+                                            )}
+                                        >
+                                            <Icon className="h-5 w-5" />
+                                            {link.title}
+                                        </Link>
+                                    );
+                                })}
+                            </div>
+                        </div>
                     );
                 })}
             </div>
