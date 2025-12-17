@@ -150,15 +150,7 @@ export default function InventoryPage() {
       <div className="max-w-7xl mx-auto space-y-6">
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => router.push('/dashboard')}
-              className="gap-2"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Back
-            </Button>
+
             <div>
               <h1 className="text-3xl font-bold text-slate-900">Inventory Management</h1>
               <p className="text-slate-600 mt-1">Track and manage stock levels</p>
@@ -287,11 +279,10 @@ export default function InventoryPage() {
                           </TableCell>
                           <TableCell>
                             <div
-                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
-                                isLowStock
+                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${isLowStock
                                   ? 'bg-orange-100 text-orange-700'
                                   : 'bg-green-100 text-green-700'
-                              }`}
+                                }`}
                             >
                               {isLowStock ? 'Low Stock' : 'In Stock'}
                             </div>
