@@ -4,15 +4,18 @@ import { useEffect, useState, useCallback } from 'react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Product } from '@prisma/client';
-import { ProductSearch } from '@/components/pos/product-search';
 import { CartSummary } from '@/components/pos/cart-summary';
 import { PaymentDialog, PaymentData } from '@/components/pos/payment-dialog';
 import { Receipt } from '@/components/pos/receipt';
 import { CustomerSearch } from '@/components/pos/customer-search';
 import { KeyboardShortcutsHelp } from '@/components/pos/keyboard-shortcuts-help';
 import { CartItem, getCartSummary } from '@/lib/cart-utils';
+import { CategoryFilter } from '@/components/pos/category-filter';
+import { ProductGrid } from '@/components/pos/product-grid';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { ChevronLeft } from 'lucide-react';
+import { ChevronLeft, Search } from 'lucide-react';
 import { toast } from 'sonner';
 import { useHotkeys } from '@/hooks/use-hotkeys';
 
@@ -35,6 +38,8 @@ interface StoreSettings {
 export default function POSPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+
+  // State from previous implementation
   const [products, setProducts] = useState<Product[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [discountPercentage, setDiscountPercentage] = useState(0);
@@ -46,12 +51,19 @@ export default function POSPage() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [storeSettings, setStoreSettings] = useState<StoreSettings | null>(null);
 
+  // New State for Categories and Grid
+  const [categories, setCategories] = useState<any[]>([]);
+  const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  // Authentication Check
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login');
     }
   }, [status, router]);
 
+  // Fetch Settings
   useEffect(() => {
     const fetchSettings = async () => {
       try {
@@ -68,47 +80,31 @@ export default function POSPage() {
     fetchSettings();
   }, []);
 
+  // Fetch Products and Categories
   useEffect(() => {
-    const fetchProducts = async () => {
-      console.log("🔄 Fetching products from /api/products...");
+    const fetchData = async () => {
       try {
-        const response = await fetch('/api/products');
-        console.log("📡 Response status:", response.status);
+        const [productsRes, categoriesRes] = await Promise.all([
+          fetch('/api/products'),
+          fetch('/api/categories')
+        ]);
 
-        if (!response.ok) throw new Error('Failed to fetch products');
+        if (productsRes.ok) {
+          const data = await productsRes.json();
+          setProducts(Array.isArray(data) ? data : data.products || []);
+        }
 
-        const data = await response.json();
-        console.log("📦 Raw API data:", data);
-
-        const productsArray = Array.isArray(data) ? data : data.products || [];
-        console.log(`✅ Loaded ${productsArray.length} products`);
-
-        setProducts(productsArray);
+        if (categoriesRes.ok) {
+          setCategories(await categoriesRes.json());
+        }
       } catch (error) {
-        console.error('❌ Failed to fetch products:', error);
-        toast.error('Failed to load products');
+        toast.error('Failed to load POS data');
       }
     };
-
-    fetchProducts();
+    fetchData();
   }, []);
 
-  // Shortcuts
-  useHotkeys('F2', () => {
-    document.getElementById('product-search-input')?.focus();
-  });
-
-  useHotkeys('Enter', () => {
-    if (!showPaymentDialog && !showReceipt && cartItems.length > 0) {
-      handleCheckout();
-    }
-  }, [showPaymentDialog, showReceipt, cartItems]);
-
-  useHotkeys('Escape', () => {
-    if (showPaymentDialog) setShowPaymentDialog(false);
-    if (showReceipt) setShowReceipt(false);
-  }, [showPaymentDialog, showReceipt]);
-
+  // Handlers
   const handleAddToCart = useCallback((product: Product) => {
     setCartItems((prev) => {
       const existingItem = prev.find((item) => item.productId === product.id);
@@ -190,7 +186,7 @@ export default function POSPage() {
           taxAmount: summary.tax,
           discountAmount: summary.discountAmount,
           paymentMethod: paymentData.paymentMethod,
-          customerId: selectedCustomer?.id || null, // Pass customer ID to API
+          customerId: selectedCustomer?.id || null,
         }),
       });
 
@@ -224,8 +220,8 @@ export default function POSPage() {
         change: Math.round(change * 100) / 100,
         cashierName: session?.user?.name || 'Unknown',
         transactionTime: new Date(),
-        customerName: selectedCustomer?.fullName, // Pass customer name to receipt
-        storeSettings: storeSettings, // Pass store settings to receipt
+        customerName: selectedCustomer?.fullName,
+        storeSettings: storeSettings,
       });
 
       setShowReceipt(true);
@@ -233,8 +229,7 @@ export default function POSPage() {
 
       setCartItems([]);
       setDiscountPercentage(0);
-      setSelectedCustomer(null); // Reset customer after sale
-
+      setSelectedCustomer(null);
 
       toast.success('Sale completed successfully');
     } catch (error) {
@@ -245,13 +240,33 @@ export default function POSPage() {
     }
   };
 
-  if (status === 'loading') {
-    return (
-      <div className="flex items-center justify-center min-h-screen">
-        <p className="text-slate-600">Loading...</p>
-      </div>
-    );
-  }
+  // Filter products
+  const filteredProducts = products.filter(product => {
+    const matchesSearch = searchQuery === '' ||
+      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      product.barcode?.toLowerCase().includes(searchQuery.toLowerCase());
+
+    const matchesCategory = selectedCategoryId === null || product.categoryId === selectedCategoryId;
+
+    return matchesSearch && matchesCategory;
+  });
+
+  // Shortcuts
+  useHotkeys('F2', () => {
+    document.getElementById('product-search-input')?.focus();
+  });
+
+  useHotkeys('Enter', () => {
+    if (!showPaymentDialog && !showReceipt && cartItems.length > 0) {
+      handleCheckout();
+    }
+  }, [showPaymentDialog, showReceipt, cartItems]);
+
+  useHotkeys('Escape', () => {
+    if (showPaymentDialog) setShowPaymentDialog(false);
+    if (showReceipt) setShowReceipt(false);
+  }, [showPaymentDialog, showReceipt]);
 
   const summary = getCartSummary({
     items: cartItems,
@@ -260,81 +275,56 @@ export default function POSPage() {
   });
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <div className="border-b bg-white">
-        <div className="max-w-7xl mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push('/dashboard')}
-              className="gap-2"
-            >
-              <ChevronLeft className="h-4 w-4" />
-              Back
-            </Button>
-            <h1 className="text-2xl font-bold text-slate-900">Point of Sale</h1>
+    <div className="min-h-screen bg-slate-50 flex flex-col h-screen overflow-hidden">
+      {/* Header */}
+      <div className="bg-white border-b px-4 py-3 shrink-0 flex items-center justify-between">
+        <div className="flex items-center gap-4 flex-1">
+          <Button variant="ghost" size="icon" onClick={() => router.push('/dashboard')}>
+            <ChevronLeft className="h-5 w-5" />
+          </Button>
+          <h1 className="text-xl font-bold text-slate-900 hidden md:block">POS</h1>
+
+          {/* Search Bar */}
+          <div className="relative max-w-md w-full ml-4">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input
+              id="product-search-input"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="Search products... (F2)"
+              className="pl-9 bg-slate-100 border-none"
+              autoComplete="off"
+            />
           </div>
-          <div className="flex items-center gap-4">
-            <div className="text-right">
-              <p className="text-sm font-medium text-slate-900">
-                {session?.user?.name}
-              </p>
-              <p className="text-xs text-slate-500 capitalize">
-                {session?.user?.role?.toLowerCase()}
-              </p>
-            </div>
-            <div className="border-l pl-4 flex items-center gap-2">
-              <CustomerSearch
-                selectedCustomer={selectedCustomer}
-                onSelectCustomer={setSelectedCustomer}
-              />
-              <KeyboardShortcutsHelp />
-            </div>
+        </div>
+
+        <div className="flex items-center gap-4">
+          <div className="text-right hidden sm:block">
+            <p className="text-sm font-medium text-slate-900">{session?.user?.name}</p>
           </div>
+          <CustomerSearch selectedCustomer={selectedCustomer} onSelectCustomer={setSelectedCustomer} />
+          <KeyboardShortcutsHelp />
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto p-4 grid grid-cols-1 lg:grid-cols-3 gap-6 h-[calc(100vh-100px)]">
-        <div className="lg:col-span-2 flex flex-col gap-4">
-          <div className="bg-white rounded-lg border border-slate-200 p-4">
-            <ProductSearch products={products} onAddToCart={handleAddToCart} />
+      <div className="flex-1 flex overflow-hidden">
+        {/* Main Grid Area */}
+        <div className="flex-1 flex flex-col md:p-4 overflow-hidden">
+          <div className="shrink-0 mb-4 px-4 md:px-0">
+            <CategoryFilter
+              categories={categories}
+              selectedCategoryId={selectedCategoryId}
+              onSelectCategory={setSelectedCategoryId}
+            />
           </div>
 
-          <div className="flex-1 bg-white rounded-lg border border-slate-200 p-4 overflow-y-auto">
-            {cartItems.length === 0 ? (
-              <div className="h-full flex items-center justify-center">
-                <p className="text-slate-500">
-                  Search and add products to cart
-                </p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <h2 className="text-lg font-semibold text-slate-900 mb-4">
-                  Items ({summary.itemCount})
-                </h2>
-                {cartItems.map((item) => (
-                  <div
-                    key={item.productId}
-                    className="flex items-center justify-between p-3 bg-slate-50 rounded-lg"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="font-medium text-slate-900 truncate">
-                        {item.name}
-                      </p>
-                      <p className="text-xs text-slate-500">
-                        {item.quantity} x ${item.price.toFixed(2)} = $
-                        {(item.price * item.quantity).toFixed(2)}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <ScrollArea className="flex-1 px-4 md:px-0 pb-4">
+            <ProductGrid products={filteredProducts} onAddToCart={handleAddToCart} />
+          </ScrollArea>
         </div>
 
-        <div>
+        {/* Cart Sidebar */}
+        <div className="w-full md:w-[400px] shrink-0 bg-white border-l flex flex-col">
           <CartSummary
             items={cartItems}
             discountPercentage={discountPercentage}
@@ -348,6 +338,7 @@ export default function POSPage() {
         </div>
       </div>
 
+      {/* Dialogs */}
       <PaymentDialog
         open={showPaymentDialog}
         total={summary.total}
