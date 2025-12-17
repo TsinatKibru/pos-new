@@ -7,78 +7,90 @@ export async function GET() {
   try {
     await requireAuth();
 
-    // 1. Sales Trend (Last 7 Days)
-    const sevenDaysAgo = startOfDay(subDays(new Date(), 6));
-    const sales = await prisma.sale.findMany({
-      where: {
-        createdAt: { gte: sevenDaysAgo },
-        status: 'COMPLETED',
-      },
-      select: {
-        createdAt: true,
-        totalAmount: true,
-      },
-    });
+    const [salesTrend, topProducts, paymentMethods, lowStockProducts] = await Promise.all([
+      // 1. Sales Trend (Last 7 days)
+      (async () => {
+        const sevenDaysAgo = subDays(new Date(), 7);
+        const sales = await prisma.sale.findMany({
+          where: {
+            createdAt: { gte: sevenDaysAgo },
+            status: 'COMPLETED',
+          },
+          select: {
+            createdAt: true,
+            totalAmount: true,
+          },
+          orderBy: { createdAt: 'asc' },
+        });
 
-    const salesTrendMap = new Map<string, number>();
-    // Initialize last 7 days with 0
-    for (let i = 0; i < 7; i++) {
-      const date = subDays(new Date(), i);
-      salesTrendMap.set(format(date, 'MMM dd'), 0);
-    }
+        const grouped = sales.reduce((acc: any, sale) => {
+          const date = format(sale.createdAt, 'MMM dd');
+          acc[date] = (acc[date] || 0) + Number(sale.totalAmount);
+          return acc;
+        }, {});
 
-    sales.forEach(sale => {
-      const dateKey = format(sale.createdAt, 'MMM dd');
-      const current = salesTrendMap.get(dateKey) || 0;
-      salesTrendMap.set(dateKey, current + Number(sale.totalAmount));
-    });
+        return Object.entries(grouped).map(([date, amount]) => ({
+          date,
+          amount,
+        }));
+      })(),
 
-    // Convert map to array and reverse to show oldest first
-    const salesTrend = Array.from(salesTrendMap.entries())
-      .map(([date, amount]) => ({ date, amount }))
-      .reverse();
+      // 2. Top Selling Products
+      (async () => {
+        const topItems = await prisma.saleItem.groupBy({
+          by: ['productId'],
+          _sum: { quantity: true },
+          orderBy: { _sum: { quantity: 'desc' } },
+          take: 5,
+        });
 
+        const products = await prisma.product.findMany({
+          where: { id: { in: topItems.map((i) => i.productId) } },
+          select: { id: true, name: true, price: true },
+        });
 
-    // 2. Top Products (by Quantity)
-    const topProductsRaw = await prisma.saleItem.groupBy({
-      by: ['productId'],
-      _sum: { quantity: true },
-      orderBy: { _sum: { quantity: 'desc' } },
-      take: 5,
-    });
+        return topItems.map((item) => {
+          const product = products.find((p) => p.id === item.productId);
+          return {
+            name: product?.name || 'Unknown',
+            quantity: item._sum.quantity,
+            price: Number(product?.price || 0),
+          };
+        });
+      })(),
 
-    const topProductIds = topProductsRaw.map(p => p.productId);
-    const products = await prisma.product.findMany({
-      where: { id: { in: topProductIds } },
-      select: { id: true, name: true, price: true },
-    });
+      // 3. Payment Methods
+      (async () => {
+        const methods = await prisma.sale.groupBy({
+          by: ['paymentMethod'],
+          _count: true,
+        });
+        return methods.map((m) => ({
+          name: m.paymentMethod,
+          value: m._count,
+        }));
+      })(),
 
-    const topProducts = topProductsRaw.map(item => {
-      const product = products.find(p => p.id === item.productId);
-      return {
-        name: product?.name || 'Unknown',
-        quantity: item._sum.quantity || 0,
-        price: Number(product?.price || 0),
-      };
-    });
-
-
-    // 3. Payment Methods
-    const paymentMethodsRaw = await prisma.sale.groupBy({
-      by: ['paymentMethod'],
-      _count: { id: true },
-      where: { status: 'COMPLETED' },
-    });
-
-    const paymentMethods = paymentMethodsRaw.map(pm => ({
-      name: pm.paymentMethod,
-      value: pm._count.id,
-    }));
+      // 4. Low Stock Products
+      prisma.product.findMany({
+        where: {
+          stockQuantity: { lte: 10 }, // Default threshold, could be from settings
+        },
+        select: {
+          id: true,
+          name: true,
+          stockQuantity: true,
+        },
+        take: 5,
+        orderBy: { stockQuantity: 'asc' },
+      }),
+    ]);
 
     return NextResponse.json({
       salesTrend,
       topProducts,
       paymentMethods,
+      lowStockProducts,
     });
 
   } catch (error) {

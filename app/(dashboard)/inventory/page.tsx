@@ -22,8 +22,9 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ChevronLeft, AlertCircle, Plus, Edit2, Trash2, Search } from 'lucide-react';
+import { ChevronLeft, AlertCircle, Plus, Edit2, Trash2, Search, Download } from 'lucide-react';
 import { toast } from 'sonner';
+import { exportToCSV } from '@/lib/export-utils';
 
 interface Product {
   id: string;
@@ -145,6 +146,26 @@ export default function InventoryPage() {
     ? products.filter((p) => p.stockQuantity < lowStockThreshold)
     : products;
 
+  const handleExport = () => {
+    if (filteredProducts.length === 0) {
+      toast.error('No inventory data to export');
+      return;
+    }
+
+    const exportData = filteredProducts.map((p) => ({
+      Name: p.name,
+      SKU: p.sku,
+      Stock: p.stockQuantity,
+      'Cost Price': p.cost,
+      'Selling Price': p.price,
+      'Total Value': (p.stockQuantity * p.cost).toFixed(2),
+      Status: p.stockQuantity < lowStockThreshold ? 'Low Stock' : 'In Stock'
+    }));
+
+    exportToCSV(exportData, `inventory-audit-${new Date().toISOString().split('T')[0]}`);
+    toast.success('Inventory exported');
+  };
+
   return (
     <div className="min-h-screen bg-slate-50 p-6">
       <div className="max-w-7xl mx-auto space-y-6">
@@ -156,6 +177,10 @@ export default function InventoryPage() {
               <p className="text-slate-600 mt-1">Track and manage stock levels</p>
             </div>
           </div>
+          <Button variant="outline" onClick={handleExport} className="gap-2">
+            <Download className="h-4 w-4" />
+            Export Inventory
+          </Button>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
@@ -280,8 +305,8 @@ export default function InventoryPage() {
                           <TableCell>
                             <div
                               className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${isLowStock
-                                  ? 'bg-orange-100 text-orange-700'
-                                  : 'bg-green-100 text-green-700'
+                                ? 'bg-orange-100 text-orange-700'
+                                : 'bg-green-100 text-green-700'
                                 }`}
                             >
                               {isLowStock ? 'Low Stock' : 'In Stock'}

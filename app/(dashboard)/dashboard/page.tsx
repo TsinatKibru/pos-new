@@ -14,13 +14,25 @@ import {
   Pie,
   Cell
 } from "recharts";
-import { Loader2, TrendingUp, DollarSign, CreditCard } from "lucide-react";
+import { Loader2, TrendingUp, DollarSign, CreditCard, AlertCircle } from "lucide-react";
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
 export default function DashboardPage() {
-  const [data, setData] = useState<any>(null);
+  const [data, setData] = useState<any>(null); // State for dashboard data
   const [loading, setLoading] = useState(true);
+
+  // Suppress warnings for Recharts compatibility
+  useEffect(() => {
+    const originalConsoleError = console.error;
+    console.error = (...args) => {
+      if (typeof args[0] === 'string' && /defaultProps/.test(args[0])) return;
+      originalConsoleError(...args);
+    };
+    return () => {
+      console.error = originalConsoleError;
+    };
+  }, []);
 
   useEffect(() => {
     const fetchAnalytics = async () => {
@@ -193,6 +205,43 @@ export default function DashboardPage() {
                 </div>
               ))}
             </div>
+          </CardContent>
+        </Card>
+
+        {/* Low Stock Alerts */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <AlertCircle className="h-5 w-5 text-orange-500" />
+              Low Stock Alerts
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            {data.lowStockProducts.length === 0 ? (
+              <div className="flex flex-col items-center justify-center h-[300px] text-slate-500">
+                <p>All stock levels are healthy.</p>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                {data.lowStockProducts.map((product: any) => (
+                  <div key={product.id} className="flex items-center justify-between p-3 bg-orange-50 rounded-lg border border-orange-100">
+                    <div>
+                      <p className="font-medium text-slate-900">{product.name}</p>
+                      <p className="text-xs text-orange-600 font-medium">Low Stock</p>
+                    </div>
+                    <div className="text-right">
+                      <span className="text-xl font-bold text-slate-900">{product.stockQuantity}</span>
+                      <span className="text-xs text-slate-500 ml-1">left</span>
+                    </div>
+                  </div>
+                ))}
+                {data.lowStockProducts.length >= 5 && (
+                  <p className="text-center text-xs text-slate-500 mt-4">
+                    Check Inventory for more details
+                  </p>
+                )}
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>

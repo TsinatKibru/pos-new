@@ -12,9 +12,10 @@ import {
     TableRow,
 } from "@/components/ui/table";
 import { SaleDetails } from "@/components/sales/sale-details";
-import { Search, Calendar, Eye } from "lucide-react";
-import { formatDistanceToNow } from "date-fns";
+import { Search, Calendar, Eye, Download } from "lucide-react";
+import { formatDistanceToNow, format } from "date-fns";
 import { toast } from "sonner";
+import { exportToCSV } from "@/lib/export-utils";
 
 export default function SalesPage() {
     const [sales, setSales] = useState<any[]>([]);
@@ -78,6 +79,27 @@ export default function SalesPage() {
         setDetailOpen(true);
     };
 
+    const handleExport = () => {
+        if (sales.length === 0) {
+            toast.error("No data to export");
+            return;
+        }
+
+        const exportData = sales.map(sale => ({
+            Date: format(new Date(sale.createdAt), 'yyyy-MM-dd'),
+            Time: format(new Date(sale.createdAt), 'HH:mm:ss'),
+            'Invoice #': sale.id,
+            Customer: sale.customer?.fullName || 'Walk-in',
+            Cashier: sale.user?.fullName || 'Unknown',
+            Total: sale.totalAmount,
+            Status: sale.status,
+            'Payment Method': sale.paymentMethod
+        }));
+
+        exportToCSV(exportData, `sales-report-${new Date().toISOString().split('T')[0]}`);
+        toast.success("Sales report exported");
+    };
+
     return (
         <div className="min-h-screen bg-slate-50 p-6">
             <div className="max-w-7xl mx-auto space-y-6">
@@ -87,9 +109,15 @@ export default function SalesPage() {
                         <p className="text-slate-600 mt-1">View past transactions</p>
                     </div>
 
-                    <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex items-center gap-4">
-                        <div className="text-sm text-slate-500 font-medium uppercase tracking-wider">Total Sales</div>
-                        <div className="text-2xl font-bold text-green-600">${totalSales.toFixed(2)}</div>
+                    <div className="flex items-center gap-4">
+                        <Button variant="outline" onClick={handleExport} className="gap-2">
+                            <Download className="h-4 w-4" />
+                            Export CSV
+                        </Button>
+                        <div className="bg-white p-4 rounded-lg shadow-sm border border-slate-200 flex items-center gap-4">
+                            <div className="text-sm text-slate-500 font-medium uppercase tracking-wider">Total Sales</div>
+                            <div className="text-2xl font-bold text-green-600">${totalSales.toFixed(2)}</div>
+                        </div>
                     </div>
                 </div>
 
