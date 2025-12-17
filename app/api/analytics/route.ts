@@ -1,115 +1,88 @@
-import { getServerSession } from 'next-auth';
-import { authOptions } from '@/lib/auth';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { NextRequest, NextResponse } from 'next/server';
+import { requireAuth } from '@/lib/auth-utils';
+import { startOfDay, subDays, format } from 'date-fns';
 
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
-    const session = await getServerSession(authOptions);
+    await requireAuth();
 
-    if (!session?.user?.email) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { email: session.user.email },
-    });
-
-    if (!user) {
-      return NextResponse.json({ error: 'User not found' }, { status: 404 });
-    }
-
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const tomorrow = new Date(today);
-    tomorrow.setDate(tomorrow.getDate() + 1);
-
-    const todaySales = await prisma.sale.findMany({
+    // 1. Sales Trend (Last 7 Days)
+    const sevenDaysAgo = startOfDay(subDays(new Date(), 6));
+    const sales = await prisma.sale.findMany({
       where: {
-        userId: user.id,
-        createdAt: {
-          gte: today,
-          lt: tomorrow,
-        },
+        createdAt: { gte: sevenDaysAgo },
+        status: 'COMPLETED',
       },
-      include: {
-        saleItems: {
-          include: {
-            product: true,
-          },
-        },
+      select: {
+        createdAt: true,
+        totalAmount: true,
       },
     });
 
-    const totalSales = todaySales.reduce((sum, sale) => sum + Number(sale.totalAmount), 0);
-    const transactionCount = todaySales.length;
+    const salesTrendMap = new Map<string, number>();
+    // Initialize last 7 days with 0
+    for (let i = 0; i < 7; i++) {
+      const date = subDays(new Date(), i);
+      salesTrendMap.set(format(date, 'MMM dd'), 0);
+    }
 
-    const productSales = new Map<string, { name: string; quantity: number; revenue: number }>();
-    todaySales.forEach((sale) => {
-      sale.saleItems.forEach((item) => {
-        const key = item.productId;
-        const existing = productSales.get(key) || {
-          name: item.product.name,
-          quantity: 0,
-          revenue: 0,
-        };
-        existing.quantity += item.quantity;
-        existing.revenue += Number(item.subtotal);
-        productSales.set(key, existing);
-      });
+    sales.forEach(sale => {
+      const dateKey = format(sale.createdAt, 'MMM dd');
+      const current = salesTrendMap.get(dateKey) || 0;
+      salesTrendMap.set(dateKey, current + Number(sale.totalAmount));
     });
 
-    const topProducts = Array.from(productSales.values())
-      .sort((a, b) => b.revenue - a.revenue)
-      .slice(0, 5);
+    // Convert map to array and reverse to show oldest first
+    const salesTrend = Array.from(salesTrendMap.entries())
+      .map(([date, amount]) => ({ date, amount }))
+      .reverse();
 
-    const products = await prisma.product.findMany();
-    const productCount = products.length;
-    const lowStockCount = products.filter((p) => p.stockQuantity < 10).length;
 
-    const last7Days = Array.from({ length: 7 }, (_, i) => {
-      const date = new Date(today);
-      date.setDate(date.getDate() - (6 - i));
-      return date;
+    // 2. Top Products (by Quantity)
+    const topProductsRaw = await prisma.saleItem.groupBy({
+      by: ['productId'],
+      _sum: { quantity: true },
+      orderBy: { _sum: { quantity: 'desc' } },
+      take: 5,
     });
 
-    const salesTrend = await Promise.all(
-      last7Days.map(async (date) => {
-        const nextDate = new Date(date);
-        nextDate.setDate(nextDate.getDate() + 1);
+    const topProductIds = topProductsRaw.map(p => p.productId);
+    const products = await prisma.product.findMany({
+      where: { id: { in: topProductIds } },
+      select: { id: true, name: true, price: true },
+    });
 
-        const sales = await prisma.sale.findMany({
-          where: {
-            userId: user.id,
-            createdAt: {
-              gte: date,
-              lt: nextDate,
-            },
-          },
-        });
+    const topProducts = topProductsRaw.map(item => {
+      const product = products.find(p => p.id === item.productId);
+      return {
+        name: product?.name || 'Unknown',
+        quantity: item._sum.quantity || 0,
+        price: Number(product?.price || 0),
+      };
+    });
 
-        const total = sales.reduce((sum, sale) => sum + Number(sale.totalAmount), 0);
 
-        return {
-          date: date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' }),
-          sales: total,
-          transactions: sales.length,
-        };
-      })
-    );
+    // 3. Payment Methods
+    const paymentMethodsRaw = await prisma.sale.groupBy({
+      by: ['paymentMethod'],
+      _count: { id: true },
+      where: { status: 'COMPLETED' },
+    });
+
+    const paymentMethods = paymentMethodsRaw.map(pm => ({
+      name: pm.paymentMethod,
+      value: pm._count.id,
+    }));
 
     return NextResponse.json({
-      todaySummary: {
-        totalSales,
-        transactionCount,
-        productCount,
-        lowStockCount,
-      },
-      topProducts,
       salesTrend,
+      topProducts,
+      paymentMethods,
     });
+
   } catch (error) {
-    console.error('Analytics error:', error);
+    console.error('Failed to fetch analytics:', error);
     return NextResponse.json(
       { error: 'Failed to fetch analytics' },
       { status: 500 }

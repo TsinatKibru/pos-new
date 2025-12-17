@@ -25,7 +25,7 @@ import {
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
 import { Loader2, Upload, X } from "lucide-react";
-import { ImageUpload } from "./image-upload";
+import { ImageUpload } from "@/components/ui/image-upload";
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
