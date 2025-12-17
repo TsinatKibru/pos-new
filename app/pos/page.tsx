@@ -8,10 +8,27 @@ import { ProductSearch } from '@/components/pos/product-search';
 import { CartSummary } from '@/components/pos/cart-summary';
 import { PaymentDialog, PaymentData } from '@/components/pos/payment-dialog';
 import { Receipt } from '@/components/pos/receipt';
+import { CustomerSearch } from '@/components/pos/customer-search';
 import { CartItem, getCartSummary } from '@/lib/cart-utils';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import { toast } from 'sonner';
+
+interface Customer {
+  id: string;
+  fullName: string;
+  email: string | null;
+  phone: string | null;
+}
+
+interface StoreSettings {
+  storeName: string;
+  address: string | null;
+  phone: string | null;
+  email: string | null;
+  currency: string;
+  taxRate: number;
+}
 
 export default function POSPage() {
   const { data: session, status } = useSession();
@@ -19,17 +36,35 @@ export default function POSPage() {
   const [products, setProducts] = useState<Product[]>([]);
   const [cartItems, setCartItems] = useState<CartItem[]>([]);
   const [discountPercentage, setDiscountPercentage] = useState(0);
-  const [taxRate] = useState(10);
+  const [taxRate, setTaxRate] = useState(10);
   const [showPaymentDialog, setShowPaymentDialog] = useState(false);
   const [isCheckingOut, setIsCheckingOut] = useState(false);
   const [receipt, setReceipt] = useState<any>(null);
   const [showReceipt, setShowReceipt] = useState(false);
+  const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
+  const [storeSettings, setStoreSettings] = useState<StoreSettings | null>(null);
 
   useEffect(() => {
     if (status === 'unauthenticated') {
       router.push('/login');
     }
   }, [status, router]);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const response = await fetch('/api/settings');
+        if (response.ok) {
+          const data = await response.json();
+          setStoreSettings(data);
+          if (data.taxRate) setTaxRate(Number(data.taxRate));
+        }
+      } catch (error) {
+        console.error('Failed to fetch settings:', error);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -137,6 +172,7 @@ export default function POSPage() {
           taxAmount: summary.tax,
           discountAmount: summary.discountAmount,
           paymentMethod: paymentData.paymentMethod,
+          customerId: selectedCustomer?.id || null, // Pass customer ID to API
         }),
       });
 
@@ -170,6 +206,8 @@ export default function POSPage() {
         change: Math.round(change * 100) / 100,
         cashierName: session?.user?.name || 'Unknown',
         transactionTime: new Date(),
+        customerName: selectedCustomer?.fullName, // Pass customer name to receipt
+        storeSettings: storeSettings, // Pass store settings to receipt
       });
 
       setShowReceipt(true);
@@ -177,6 +215,8 @@ export default function POSPage() {
 
       setCartItems([]);
       setDiscountPercentage(0);
+      setSelectedCustomer(null); // Reset customer after sale
+
 
       toast.success('Sale completed successfully');
     } catch (error) {
@@ -217,13 +257,21 @@ export default function POSPage() {
             </Button>
             <h1 className="text-2xl font-bold text-slate-900">Point of Sale</h1>
           </div>
-          <div className="text-right">
-            <p className="text-sm font-medium text-slate-900">
-              {session?.user?.name}
-            </p>
-            <p className="text-xs text-slate-500 capitalize">
-              {session?.user?.role?.toLowerCase()}
-            </p>
+          <div className="flex items-center gap-4">
+            <div className="text-right">
+              <p className="text-sm font-medium text-slate-900">
+                {session?.user?.name}
+              </p>
+              <p className="text-xs text-slate-500 capitalize">
+                {session?.user?.role?.toLowerCase()}
+              </p>
+            </div>
+            <div className="border-l pl-4">
+              <CustomerSearch
+                selectedCustomer={selectedCustomer}
+                onSelectCustomer={setSelectedCustomer}
+              />
+            </div>
           </div>
         </div>
       </div>

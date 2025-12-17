@@ -42,7 +42,17 @@ export function Receipt({
   cashierName,
   transactionTime,
   onClose,
-}: ReceiptProps) {
+  customerName,
+  storeSettings,
+}: ReceiptProps & {
+  customerName?: string;
+  storeSettings?: {
+    storeName: string;
+    address?: string | null;
+    phone?: string | null;
+    email?: string | null;
+  } | null;
+}) {
   const receiptRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
@@ -75,11 +85,27 @@ export function Receipt({
           style={{ fontSize: '12px', lineHeight: '1.4' }}
         >
           <div className="text-center mb-4">
-            <p className="font-bold text-base">RECEIPT</p>
-            <p className="text-xs text-slate-500">Transaction: {saleId}</p>
-            <p className="text-xs text-slate-500">
-              {formatDistanceToNow(new Date(transactionTime), { addSuffix: true })}
-            </p>
+            <h1 className="font-bold text-lg uppercase">{storeSettings?.storeName || 'RECEIPT'}</h1>
+            {storeSettings?.address && (
+              <p className="text-xs text-slate-500">{storeSettings.address}</p>
+            )}
+            {storeSettings?.phone && (
+              <p className="text-xs text-slate-500">Tel: {storeSettings.phone}</p>
+            )}
+            {storeSettings?.email && (
+              <p className="text-xs text-slate-500">{storeSettings.email}</p>
+            )}
+
+            <div className="mt-4 text-xs text-slate-500">
+              <p>Transaction: {saleId}</p>
+              <p>{formatDistanceToNow(new Date(transactionTime), { addSuffix: true })}</p>
+            </div>
+
+            {customerName && (
+              <div className="mt-2 text-xs font-semibold border p-1 rounded">
+                Customer: {customerName}
+              </div>
+            )}
           </div>
 
           <div className="border-t border-dashed my-2"></div>

@@ -131,3 +131,16 @@ model SaleItem {
   @@index([productId])
   @@map("sale_items")
 }
+
+model StoreSettings {
+  id        String   @id @default(uuid())
+  storeName String   @default("My Store") @map("store_name")
+  address   String?
+  phone     String?
+  email     String?
+  currency  String   @default("USD")
+  taxRate   Decimal  @default(10) @map("tax_rate") @db.Decimal(10, 2)
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  @@map("store_settings")
+}

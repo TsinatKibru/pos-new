@@ -16,7 +16,15 @@ import {
 import { Button } from "@/components/ui/button";
 import { signOut } from "next-auth/react";
 
-const sidebarLinks = [
+interface SidebarLink {
+    title: string;
+    href: string;
+    icon: any;
+    disabled?: boolean;
+}
+
+
+const sidebarLinks: SidebarLink[] = [
     {
         title: "Dashboard",
         href: "/dashboard",
@@ -41,13 +49,11 @@ const sidebarLinks = [
         title: "Customers",
         href: "/customers",
         icon: Users,
-        disabled: true, // Pending implementation
     },
     {
         title: "Settings",
         href: "/settings",
         icon: Settings,
-        disabled: true, // Pending implementation
     },
 ];
 
