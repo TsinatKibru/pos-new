@@ -14,6 +14,7 @@ import {
     Store,
     History,
     Shield,
+    User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { signOut } from "next-auth/react";
@@ -66,6 +67,11 @@ const sidebarLinks: SidebarLink[] = [
         title: "Settings",
         href: "/settings",
         icon: Settings,
+    },
+    {
+        title: "Profile",
+        href: "/profile",
+        icon: User,
     },
 ];
 

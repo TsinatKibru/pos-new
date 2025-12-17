@@ -72,24 +72,26 @@ export function UserForm({
     const watchImageUrl = watch("imageUrl");
 
     useEffect(() => {
-        if (user) {
-            reset({
-                fullName: user.fullName,
-                email: user.email,
-                password: "", // Don't fill password on edit
-                role: user.role,
-                imageUrl: user.imageUrl || "",
-            });
-        } else {
-            reset({
-                fullName: "",
-                email: "",
-                password: "",
-                role: "STAFF",
-                imageUrl: "",
-            });
+        if (open) {
+            if (user) {
+                reset({
+                    fullName: user.fullName,
+                    email: user.email,
+                    password: "", // Don't fill password on edit
+                    role: user.role,
+                    imageUrl: user.imageUrl || "",
+                });
+            } else {
+                reset({
+                    fullName: "",
+                    email: "",
+                    password: "",
+                    role: "STAFF",
+                    imageUrl: "",
+                });
+            }
         }
-    }, [user, reset]);
+    }, [user, reset, open]);
 
     const handleFormSubmit = async (data: UserFormData) => {
         // Validate password for new users manually since zod optional doesn't cover conditional logic easily without refine

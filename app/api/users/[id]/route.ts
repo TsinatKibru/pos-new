@@ -6,22 +6,27 @@ import { hash } from 'bcryptjs';
 export async function PUT(req: Request, { params }: { params: { id: string } }) {
     try {
         const currentUser = await requireAuth();
+        const { id } = params;
 
-        // Only admin can update other users (except potentially self-update, but let's restrict to admin for now)
-        if (currentUser.role !== 'ADMIN') {
+        // Allow if admin OR if updating own profile
+        if (currentUser.role !== 'ADMIN' && currentUser.id !== id) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
         }
 
-        const { id } = params;
         const body = await req.json();
         const { fullName, email, role, password, imageUrl } = body;
 
         const updateData: any = {
             fullName,
             email,
-            role,
             imageUrl,
         };
+
+        // Only Admin can change role
+        // If self-update by non-admin, ignore role change attempt (or could throw error)
+        if (currentUser.role === 'ADMIN' && role) {
+            updateData.role = role;
+        }
 
         // Only update password if provided
         if (password) {
