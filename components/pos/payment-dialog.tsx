@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useCallback } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -19,6 +19,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { CartItem } from '@/lib/cart-utils';
+import { useHotkeys } from '@/hooks/use-hotkeys';
 
 interface PaymentDialogProps {
   open: boolean;
@@ -46,7 +47,7 @@ export function PaymentDialog({
 
   const change = Math.round((amountPaid - total) * 100) / 100;
 
-  const handleConfirm = () => {
+  const handleConfirm = useCallback(() => {
     if (paymentMethod === 'CASH' && amountPaid < total) {
       alert('Amount paid must be at least the total amount');
       return;
@@ -56,7 +57,13 @@ export function PaymentDialog({
       paymentMethod,
       amountPaid: paymentMethod === 'CASH' ? amountPaid : total,
     });
-  };
+  }, [paymentMethod, amountPaid, total, onConfirm]);
+
+  useHotkeys('Enter', () => {
+    if (open && !isLoading) {
+      handleConfirm();
+    }
+  }, [open, isLoading, handleConfirm]);
 
   return (
     <Dialog open={open} onOpenChange={onClose}>

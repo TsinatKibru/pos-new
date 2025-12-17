@@ -48,8 +48,9 @@ export function ProductSearch({
       <div className="relative">
         <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
         <Input
+          id="product-search-input"
           type="text"
-          placeholder="Search by name, SKU, or barcode..."
+          placeholder="Search by name, SKU, or barcode... (F2)"
           value={searchQuery}
           onChange={(e) => handleSearch(e.target.value)}
           onFocus={() => searchQuery && setShowResults(true)}

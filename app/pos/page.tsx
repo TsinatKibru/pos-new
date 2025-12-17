@@ -9,10 +9,12 @@ import { CartSummary } from '@/components/pos/cart-summary';
 import { PaymentDialog, PaymentData } from '@/components/pos/payment-dialog';
 import { Receipt } from '@/components/pos/receipt';
 import { CustomerSearch } from '@/components/pos/customer-search';
+import { KeyboardShortcutsHelp } from '@/components/pos/keyboard-shortcuts-help';
 import { CartItem, getCartSummary } from '@/lib/cart-utils';
 import { Button } from '@/components/ui/button';
 import { ChevronLeft } from 'lucide-react';
 import { toast } from 'sonner';
+import { useHotkeys } from '@/hooks/use-hotkeys';
 
 interface Customer {
   id: string;
@@ -90,6 +92,22 @@ export default function POSPage() {
 
     fetchProducts();
   }, []);
+
+  // Shortcuts
+  useHotkeys('F2', () => {
+    document.getElementById('product-search-input')?.focus();
+  });
+
+  useHotkeys('Enter', () => {
+    if (!showPaymentDialog && !showReceipt && cartItems.length > 0) {
+      handleCheckout();
+    }
+  }, [showPaymentDialog, showReceipt, cartItems]);
+
+  useHotkeys('Escape', () => {
+    if (showPaymentDialog) setShowPaymentDialog(false);
+    if (showReceipt) setShowReceipt(false);
+  }, [showPaymentDialog, showReceipt]);
 
   const handleAddToCart = useCallback((product: Product) => {
     setCartItems((prev) => {
@@ -266,11 +284,12 @@ export default function POSPage() {
                 {session?.user?.role?.toLowerCase()}
               </p>
             </div>
-            <div className="border-l pl-4">
+            <div className="border-l pl-4 flex items-center gap-2">
               <CustomerSearch
                 selectedCustomer={selectedCustomer}
                 onSelectCustomer={setSelectedCustomer}
               />
+              <KeyboardShortcutsHelp />
             </div>
           </div>
         </div>
