@@ -17,7 +17,7 @@ import {
     User,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { signOut } from "next-auth/react";
+import { signOut, useSession } from "next-auth/react";
 
 interface SidebarLink {
     title: string;
@@ -77,6 +77,7 @@ const sidebarLinks: SidebarLink[] = [
 
 export function Sidebar() {
     const pathname = usePathname();
+    const { data: session } = useSession();
 
     return (
         <div className="flex h-full w-64 flex-col bg-slate-900 text-slate-50">
@@ -89,6 +90,14 @@ export function Sidebar() {
 
             <div className="flex-1 px-4 space-y-2">
                 {sidebarLinks.map((link) => {
+                    // Role-based filtering
+                    if (session?.user?.role !== 'ADMIN') {
+                        // Hide these for non-admins
+                        if (['/users', '/settings', '/products'].includes(link.href)) {
+                            return null;
+                        }
+                    }
+
                     const Icon = link.icon;
                     const isActive = pathname === link.href;
 

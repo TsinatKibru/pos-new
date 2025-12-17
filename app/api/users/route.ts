@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAuth } from '@/lib/auth-utils';
+import { requireAuth, requireAdmin } from '@/lib/auth-utils';
 import { hash } from 'bcryptjs';
 
 export async function GET() {
@@ -31,15 +31,7 @@ export async function GET() {
 
 export async function POST(req: Request) {
     try {
-        const currentUser = await requireAuth();
-
-        // Only admin can create users
-        if (currentUser.role !== 'ADMIN') {
-            return NextResponse.json(
-                { error: 'Unauthorized' },
-                { status: 403 }
-            );
-        }
+        await requireAdmin();
 
         const body = await req.json();
         const { fullName, email, password, role, imageUrl } = body;

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { requireAuth } from '@/lib/auth-utils';
+import { requireAdmin, requireAuth } from '@/lib/auth-utils';
 
 const productSchema = z.object({
   name: z.string().min(1, 'Product name is required'),
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    await requireAuth();
+    await requireAdmin();
 
     const body = await request.json();
     const validatedData = productSchema.parse(body);

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 import { prisma } from '@/lib/prisma';
-import { requireAuth } from '@/lib/auth-utils';
+import { requireAuth, requireAdmin } from '@/lib/auth-utils';
 
 const productUpdateSchema = z.object({
   name: z.string().min(1, 'Product name is required').optional(),
@@ -60,7 +60,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireAuth();
+    await requireAdmin();
 
     const body = await request.json();
     const validatedData = productUpdateSchema.parse(body);
@@ -127,7 +127,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    await requireAuth();
+    await requireAdmin();
 
     const product = await prisma.product.findUnique({
       where: { id: params.id },
