@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
@@ -72,6 +74,12 @@ export async function POST(req: Request) {
       customerId,
     } = body;
 
+    console.log('Received Sale Request:', {
+      customerId,
+      pointsRedeemed: body.pointsRedeemed,
+      totalAmount
+    });
+
     // TODO: Get actual user ID from session/auth context
     // For now we might need to rely on what's passed or a default if not authenticated in API context properly yet
     // But this valid route should be protected.
@@ -106,20 +114,63 @@ export async function POST(req: Request) {
     if (!user) return NextResponse.json({ error: 'User not found' }, { status: 404 });
 
     const sale = await prisma.$transaction(async (tx) => {
+      // 1b. Handle Loyalty Points (Redeem & Earn)
+      let finalTotal = totalAmount;
+
+      // REDEEM
+      if (customerId && body.pointsRedeemed > 0) {
+        console.log(`Attempting to redeem ${body.pointsRedeemed} points for customer ${customerId}`);
+        // Verify balance
+        const customer = await tx.customer.findUnique({ where: { id: customerId } });
+        if (!customer || customer.loyaltyPoints < body.pointsRedeemed) {
+          throw new Error('Insufficient loyalty points');
+        }
+
+        await tx.customer.update({
+          where: { id: customerId },
+          data: { loyaltyPoints: { decrement: body.pointsRedeemed } }
+        });
+
+        // Discount is already applied to totalAmount in UI? 
+        // Wait, the UI sends `totalAmount` which is the SUBTOTAL - DISCOUNT + TAX.
+        // The PaymentDialog calculated a `finalTotal` which was potentially lower.
+        // But the `handlePayment` in POS page sends `summary.total`.
+        // We need to trust the `pointsRedeemed` implies a discount was given.
+
+        // Actually, the schema has `discountAmount`. We should add the points discount to that?
+        // Or just trust the `totalAmount` passed is correct?
+        // Let's assume `totalAmount` passed IS the final amount to pay.
+      }
+
+      // EARN
+      if (customerId) {
+        const settings = await tx.storeSettings.findFirst();
+        const rate = settings?.loyaltyRate ? Number(settings.loyaltyRate) : 1;
+        const pointsEarned = Math.floor(Number(totalAmount) * rate);
+
+        if (pointsEarned > 0) {
+          console.log(`Customer ${customerId} earned ${pointsEarned} points (Rate: ${rate})`);
+          await tx.customer.update({
+            where: { id: customerId },
+            data: { loyaltyPoints: { increment: pointsEarned } }
+          });
+        }
+      }
+
       // 1. Create Sale
       const newSale = await tx.sale.create({
         data: {
           userId: user.id,
           customerId,
-          totalAmount,
+          totalAmount, // This is expected to be the final paid amount
           taxAmount,
-          discountAmount,
+          discountAmount, // This might need to include points discount if we want to track it
           paymentMethod,
           status: 'COMPLETED',
         },
       });
 
-      // 2. Create Sale Items and Update Stock
+      // ... Items ...
       for (const item of items) {
         await tx.saleItem.create({
           data: {

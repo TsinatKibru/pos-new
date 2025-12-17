@@ -140,6 +140,7 @@ model StoreSettings {
   email     String?
   currency  String   @default("USD")
   taxRate   Decimal  @default(10) @map("tax_rate") @db.Decimal(10, 2)
+  loyaltyRate Decimal @default(1) @map("loyalty_rate") @db.Decimal(10, 2)
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("store_settings")

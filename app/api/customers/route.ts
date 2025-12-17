@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { z } from 'zod';
 
+export const dynamic = 'force-dynamic';
+
 const customerSchema = z.object({
     fullName: z.string().min(1, 'Full name is required'),
     email: z.string().email().optional().or(z.literal('')),

@@ -18,6 +18,7 @@ export default function SettingsPage() {
         email: "",
         currency: "USD",
         taxRate: 10,
+        loyaltyRate: 1,
     });
 
     useEffect(() => {
@@ -36,6 +37,7 @@ export default function SettingsPage() {
                 email: data.email || "",
                 currency: data.currency || "USD",
                 taxRate: data.taxRate ? Number(data.taxRate) : 10,
+                loyaltyRate: data.loyaltyRate ? Number(data.loyaltyRate) : 1,
             });
         } catch (error) {
             console.error("Error fetching settings:", error);
@@ -56,6 +58,7 @@ export default function SettingsPage() {
                 body: JSON.stringify({
                     ...formData,
                     taxRate: Number(formData.taxRate),
+                    loyaltyRate: Number(formData.loyaltyRate),
                 }),
             });
 
@@ -160,6 +163,22 @@ export default function SettingsPage() {
                                         onChange={(e) => setFormData({ ...formData, taxRate: Number(e.target.value) })}
                                         placeholder="10"
                                     />
+                                </div>
+
+                                <div className="space-y-2">
+                                    <Label htmlFor="loyaltyRate">Loyalty Points per $1</Label>
+                                    <Input
+                                        id="loyaltyRate"
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        value={formData.loyaltyRate}
+                                        onChange={(e) => setFormData({ ...formData, loyaltyRate: Number(e.target.value) })}
+                                        placeholder="1"
+                                    />
+                                    <p className="text-xs text-slate-500">
+                                        Configure earning rate above. Redemption value is fixed: 20 points = $1.00 discount.
+                                    </p>
                                 </div>
                             </div>
 

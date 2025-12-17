@@ -9,6 +9,7 @@ const settingsSchema = z.object({
     email: z.string().optional().or(z.literal('')),
     currency: z.string().min(1, 'Currency is required'),
     taxRate: z.number().min(0, 'Tax rate must be positive'),
+    loyaltyRate: z.number().min(0).optional().default(1),
 });
 
 export async function GET() {
@@ -56,6 +57,7 @@ export async function POST(req: Request) {
                 email: validatedData.email || null,
                 currency: validatedData.currency,
                 taxRate: validatedData.taxRate,
+                loyaltyRate: validatedData.loyaltyRate,
             },
             create: {
                 storeName: validatedData.storeName,
@@ -64,6 +66,7 @@ export async function POST(req: Request) {
                 email: validatedData.email || null,
                 currency: validatedData.currency,
                 taxRate: validatedData.taxRate,
+                loyaltyRate: validatedData.loyaltyRate,
             },
         });
 

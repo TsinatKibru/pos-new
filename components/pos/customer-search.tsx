@@ -23,6 +23,7 @@ interface Customer {
     fullName: string;
     email: string | null;
     phone: string | null;
+    loyaltyPoints: number;
 }
 
 interface CustomerSearchProps {
@@ -41,7 +42,7 @@ export function CustomerSearch({ onSelectCustomer, selectedCustomer }: CustomerS
                 const params = new URLSearchParams();
                 if (search) params.append("search", search);
 
-                const response = await fetch(`/api/customers?${params}`);
+                const response = await fetch(`/api/customers?${params}`, { cache: 'no-store' });
                 if (response.ok) {
                     const data = await response.json();
                     setCustomers(data);
@@ -52,11 +53,13 @@ export function CustomerSearch({ onSelectCustomer, selectedCustomer }: CustomerS
         };
 
         const timeoutId = setTimeout(() => {
-            fetchCustomers();
+            if (open || search) {
+                fetchCustomers();
+            }
         }, 300);
 
         return () => clearTimeout(timeoutId);
-    }, [search]);
+    }, [search, open]);
 
     return (
         <Popover open={open} onOpenChange={setOpen}>

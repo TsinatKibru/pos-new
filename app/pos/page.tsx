@@ -24,6 +24,7 @@ interface Customer {
   fullName: string;
   email: string | null;
   phone: string | null;
+  loyaltyPoints: number;
 }
 
 interface StoreSettings {
@@ -171,6 +172,12 @@ export default function POSPage() {
         taxRate,
       });
 
+      console.log('Sending Payment:', paymentData);
+
+      const pointsValue = (paymentData.pointsRedeemed || 0) * 0.05; // $0.05 per point
+      const finalTotal = summary.total - pointsValue;
+      const totalDiscount = summary.discountAmount + pointsValue;
+
       const response = await fetch('/api/sales', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -182,11 +189,12 @@ export default function POSPage() {
             discountAmount: item.discountAmount || 0,
             subtotal: item.price * item.quantity - (item.discountAmount || 0),
           })),
-          totalAmount: summary.total,
+          totalAmount: finalTotal, // API expects final amount paid
           taxAmount: summary.tax,
-          discountAmount: summary.discountAmount,
+          discountAmount: totalDiscount, // Total discount (manual + points)
           paymentMethod: paymentData.paymentMethod,
           customerId: selectedCustomer?.id || null,
+          pointsRedeemed: paymentData.pointsRedeemed || 0,
         }),
       });
 
@@ -342,6 +350,7 @@ export default function POSPage() {
       <PaymentDialog
         open={showPaymentDialog}
         total={summary.total}
+        customer={selectedCustomer}
         onClose={() => setShowPaymentDialog(false)}
         onConfirm={handlePayment}
         isLoading={isCheckingOut}

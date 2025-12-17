@@ -1,6 +1,9 @@
 'use client';
 
-import { useState, useCallback } from 'react';
+import { useState, useCallback, useEffect } from 'react';
+import { toast } from 'sonner';
+import { Switch } from "@/components/ui/switch"
+import { Slider } from "@/components/ui/slider"
 import {
   Dialog,
   DialogContent,
@@ -24,6 +27,7 @@ import { useHotkeys } from '@/hooks/use-hotkeys';
 interface PaymentDialogProps {
   open: boolean;
   total: number;
+  customer?: any; // Accepting customer object
   onClose: () => void;
   onConfirm: (data: PaymentData) => void;
   isLoading: boolean;
@@ -33,31 +37,65 @@ export interface PaymentData {
   paymentMethod: 'CASH' | 'CARD' | 'DIGITAL';
   customerId?: string;
   amountPaid?: number;
+  pointsRedeemed?: number;
 }
 
 export function PaymentDialog({
   open,
   total,
+  customer,
   onClose,
   onConfirm,
   isLoading,
 }: PaymentDialogProps) {
   const [paymentMethod, setPaymentMethod] = useState<'CASH' | 'CARD' | 'DIGITAL'>('CASH');
-  const [amountPaid, setAmountPaid] = useState<number>(total);
+  const [redeemPoints, setRedeemPoints] = useState(false);
+  const [pointsToRedeem, setPointsToRedeem] = useState(0);
 
-  const change = Math.round((amountPaid - total) * 100) / 100;
+  // Constants
+  const POINTS_PER_DOLLAR_DISCOUNT = 20;
+  const VALUE_PER_POINT = 1 / POINTS_PER_DOLLAR_DISCOUNT; // $0.05
+
+  // Reset state when dialog opens/closes or customer changes
+  useEffect(() => {
+    if (open) {
+      setRedeemPoints(false);
+      setPointsToRedeem(0);
+      setPaymentMethod('CASH');
+    }
+  }, [open, customer]);
+
+  // Max points user can use is limited by their balance AND the total bill
+  const maxRedeemableByBalance = customer?.loyaltyPoints || 0;
+  const maxRedeemableByTotal = Math.ceil(total / VALUE_PER_POINT);
+  const maxPoints = Math.min(maxRedeemableByBalance, maxRedeemableByTotal);
+
+  const discountFromPoints = redeemPoints ? pointsToRedeem * VALUE_PER_POINT : 0;
+  const finalTotal = Math.max(0, total - discountFromPoints);
+
+  // Initialize amountPaid with finalTotal whenever finalTotal changes (unless user manually editing?)
+  // Simple approach: Always default amountPaid to finalTotal when payment method is not CASH or when points change
+  const [amountPaid, setAmountPaid] = useState<number>(finalTotal);
+
+  useEffect(() => {
+    setAmountPaid(finalTotal);
+  }, [finalTotal]);
+
+
+  const change = Math.round((amountPaid - finalTotal) * 100) / 100;
 
   const handleConfirm = useCallback(() => {
-    if (paymentMethod === 'CASH' && amountPaid < total) {
-      alert('Amount paid must be at least the total amount');
+    if (paymentMethod === 'CASH' && amountPaid < finalTotal) {
+      toast.error('Amount paid must be at least the total amount');
       return;
     }
 
     onConfirm({
       paymentMethod,
-      amountPaid: paymentMethod === 'CASH' ? amountPaid : total,
+      amountPaid: paymentMethod === 'CASH' ? amountPaid : finalTotal,
+      pointsRedeemed: redeemPoints ? pointsToRedeem : 0,
     });
-  }, [paymentMethod, amountPaid, total, onConfirm]);
+  }, [paymentMethod, amountPaid, finalTotal, redeemPoints, pointsToRedeem, onConfirm]);
 
   useHotkeys('Enter', () => {
     if (open && !isLoading) {
@@ -75,10 +113,69 @@ export function PaymentDialog({
         <div className="space-y-4">
           <div className="bg-slate-50 rounded-lg p-4">
             <p className="text-sm text-slate-600">Total Amount</p>
-            <p className="text-3xl font-bold text-slate-900">
-              ${total.toFixed(2)}
-            </p>
+            <div className="flex items-baseline gap-2">
+              <p className="text-3xl font-bold text-slate-900">
+                ${finalTotal.toFixed(2)}
+              </p>
+              {discountFromPoints > 0 && (
+                <span className="text-sm text-green-600 font-medium line-through">
+                  ${total.toFixed(2)}
+                </span>
+              )}
+            </div>
+
+            {discountFromPoints > 0 && (
+              <p className="text-xs text-green-600 mt-1">
+                You saved ${discountFromPoints.toFixed(2)} using {pointsToRedeem} points
+              </p>
+            )}
           </div>
+
+          {/* Loyalty Section */}
+          {customer && maxPoints > 0 && (
+            <div className="bg-blue-50 border border-blue-100 rounded-lg p-3 space-y-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-blue-900">Use Loyalty Points</p>
+                  <p className="text-xs text-blue-700">Balance: {customer.loyaltyPoints} pts</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-slate-600">Off</span>
+                  <Switch
+                    checked={redeemPoints}
+                    onCheckedChange={(checked) => {
+                      setRedeemPoints(checked);
+                      if (checked) {
+                        // Default to max possible
+                        setPointsToRedeem(maxPoints);
+                      }
+                    }}
+                  />
+                  <span className="text-xs font-medium text-slate-600">On</span>
+                </div>
+              </div>
+
+              {redeemPoints && (
+                <div className="space-y-2 pt-2 border-t border-blue-200">
+                  <div className="flex justify-between text-xs text-blue-800">
+                    <span>Redeem</span>
+                    <span>{pointsToRedeem} pts (-${(pointsToRedeem * VALUE_PER_POINT).toFixed(2)})</span>
+                  </div>
+                  <Slider
+                    value={[pointsToRedeem]}
+                    min={0}
+                    max={maxPoints}
+                    step={20} // Enforce increments of 20 ($1)
+                    onValueChange={(vals) => setPointsToRedeem(vals[0])}
+                    className="py-1"
+                  />
+                  <p className="text-xs text-blue-600 text-center">
+                    20 points = $1.00 discount
+                  </p>
+                </div>
+              )}
+            </div>
+          )}
 
           <div className="space-y-2">
             <Label htmlFor="payment-method">Payment Method</Label>
@@ -101,7 +198,7 @@ export function PaymentDialog({
                 id="amount-paid"
                 type="number"
                 step="0.01"
-                min={total}
+                min={finalTotal}
                 value={amountPaid}
                 onChange={(e) => setAmountPaid(parseFloat(e.target.value) || 0)}
               />
@@ -130,7 +227,7 @@ export function PaymentDialog({
             disabled={isLoading}
             className="bg-blue-600 hover:bg-blue-700 text-white"
           >
-            {isLoading ? 'Processing...' : 'Confirm Payment'}
+            {isLoading ? 'Processing...' : `Pay $${finalTotal.toFixed(2)}`}
           </Button>
         </DialogFooter>
       </DialogContent>
