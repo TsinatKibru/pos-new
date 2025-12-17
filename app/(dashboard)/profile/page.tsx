@@ -124,62 +124,117 @@ export default function ProfilePage() {
     if (!session) return null;
 
     return (
-        <div className="min-h-screen bg-slate-50 p-6">
-            <div className="max-w-2xl mx-auto space-y-6">
+        <div className="min-h-screen bg-slate-50/50 p-6 lg:p-8">
+            <div className="max-w-4xl mx-auto space-y-8">
                 <div>
-                    <h1 className="text-3xl font-bold text-slate-900">My Profile</h1>
-                    <p className="text-slate-600 mt-1">Manage your account settings</p>
+                    <h1 className="text-3xl font-bold text-slate-900 tracking-tight">My Profile</h1>
+                    <p className="text-slate-500 mt-2 text-lg">Manage your account settings and preferences.</p>
                 </div>
 
-                <Card>
-                    <CardHeader>
-                        <CardTitle>Profile Details</CardTitle>
-                        <CardDescription>Update your personal information and password.</CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                        <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
-                            <div className="space-y-2">
-                                <Label>Avatar</Label>
-                                <div className="flex justify-center sm:justify-start">
-                                    <div className="w-32">
-                                        <ImageUpload
-                                            value={watchImageUrl}
-                                            onChange={(url) => setValue("imageUrl", url)}
-                                            onRemove={() => setValue("imageUrl", "")}
-                                        />
+                <form onSubmit={handleSubmit(handleFormSubmit)}>
+                    <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+                        {/* Sidebar / Avatar Section */}
+                        <div className="lg:col-span-4 space-y-6">
+                            <Card className="border-slate-200 shadow-sm overflow-hidden">
+                                <CardHeader className="bg-slate-900 text-white pb-8">
+                                    <div className="flex justify-between items-start">
+                                        <CardTitle className="text-lg font-medium">Public Profile</CardTitle>
+                                        <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium uppercase tracking-wide ${user?.role === 'ADMIN' ? 'bg-purple-500/20 text-purple-100' : 'bg-blue-500/20 text-blue-100'
+                                            }`}>
+                                            {user?.role || 'STAFF'}
+                                        </span>
                                     </div>
+                                    <CardDescription className="text-slate-400">
+                                        Your visible information
+                                    </CardDescription>
+                                </CardHeader>
+                                <CardContent className="pt-0 -mt-6">
+                                    <div className="flex flex-col items-center">
+                                        <div className="rounded-full p-1 bg-white shadow-lg">
+                                            <div className="w-32 h-32 rounded-full overflow-hidden border-4 border-slate-50 bg-slate-100">
+                                                <ImageUpload
+                                                    value={watchImageUrl}
+                                                    onChange={(url) => setValue("imageUrl", url)}
+                                                    onRemove={() => setValue("imageUrl", "")}
+                                                />
+                                            </div>
+                                        </div>
+                                        <div className="mt-4 text-center">
+                                            <h3 className="font-semibold text-lg text-slate-900">
+                                                {watch("fullName") || "Your Name"}
+                                            </h3>
+                                            <p className="text-sm text-slate-500">{watch("email") || "your@email.com"}</p>
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+                        </div>
+
+                        {/* Main Content Section */}
+                        <div className="lg:col-span-8 space-y-6">
+                            <Card className="border-slate-200 shadow-sm">
+                                <CardHeader>
+                                    <CardTitle>Personal Information</CardTitle>
+                                    <CardDescription>Update your basic profile details.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        <div className="space-y-2">
+                                            <Label htmlFor="fullName">Full Name</Label>
+                                            <Input
+                                                id="fullName"
+                                                {...register("fullName")}
+                                                placeholder="John Doe"
+                                                className="bg-slate-50/50"
+                                            />
+                                            {errors.fullName && <p className="text-sm text-red-600">{errors.fullName.message}</p>}
+                                        </div>
+
+                                        <div className="space-y-2">
+                                            <Label htmlFor="email">Email Address</Label>
+                                            <Input
+                                                id="email"
+                                                type="email"
+                                                {...register("email")}
+                                                placeholder="john@example.com"
+                                                className="bg-slate-50/50"
+                                            />
+                                            {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
+                                        </div>
+                                    </div>
+                                </CardContent>
+                            </Card>
+
+                            <Card className="border-slate-200 shadow-sm">
+                                <CardHeader>
+                                    <CardTitle>Security</CardTitle>
+                                    <CardDescription>Ensure your account is secure using a strong password.</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label htmlFor="password">New Password</Label>
+                                        <Input
+                                            id="password"
+                                            type="password"
+                                            {...register("password")}
+                                            placeholder="Leave blank to keep current"
+                                            className="bg-slate-50/50"
+                                        />
+                                        <p className="text-xs text-slate-500">
+                                            Minimum 6 characters recommended. Leave empty if you don't want to change it.
+                                        </p>
+                                    </div>
+                                </CardContent>
+                                <div className="p-6 pt-0 border-t bg-slate-50/30 flex justify-end rounded-b-lg">
+                                    <Button type="submit" disabled={isLoading} className="mt-4 min-w-[120px]">
+                                        {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Save Changes
+                                    </Button>
                                 </div>
-                            </div>
-
-                            <div className="grid gap-4 sm:grid-cols-2">
-                                <div className="space-y-2">
-                                    <Label htmlFor="fullName">Full Name</Label>
-                                    <Input id="fullName" {...register("fullName")} placeholder="John Doe" />
-                                    {errors.fullName && <p className="text-sm text-red-600">{errors.fullName.message}</p>}
-                                </div>
-
-                                <div className="space-y-2">
-                                    <Label htmlFor="email">Email</Label>
-                                    <Input id="email" type="email" {...register("email")} placeholder="john@example.com" />
-                                    {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
-                                </div>
-                            </div>
-
-                            <div className="space-y-2">
-                                <Label htmlFor="password">New Password (Optional)</Label>
-                                <Input id="password" type="password" {...register("password")} placeholder="Leave blank to keep current" />
-                                <p className="text-xs text-slate-500">Only fill this if you want to change your password.</p>
-                            </div>
-
-                            <div className="flex justify-end">
-                                <Button type="submit" disabled={isLoading}>
-                                    {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                    Save Changes
-                                </Button>
-                            </div>
-                        </form>
-                    </CardContent>
-                </Card>
+                            </Card>
+                        </div>
+                    </div>
+                </form>
             </div>
         </div>
     );
