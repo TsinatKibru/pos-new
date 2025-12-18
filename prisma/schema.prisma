@@ -35,6 +35,7 @@ model User {
   updatedAt     DateTime @updatedAt @map("updated_at")
 
   sales         Sale[]
+  stockLogs     StockLog[]
 
   @@map("users")
 }
@@ -71,6 +72,7 @@ model Product {
 
   category      Category?   @relation(fields: [categoryId], references: [id], onDelete: SetNull)
   saleItems     SaleItem[]
+  stockLogs     StockLog[]
 
   @@index([categoryId])
   @@index([sku])
@@ -144,4 +146,32 @@ model StoreSettings {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   @@map("store_settings")
+}
+
+enum StockActionType {
+  SALE
+  RESTOCK
+  ADJUSTMENT
+  RETURN
+  THEFT
+  OTHER
+}
+
+model StockLog {
+  id            String          @id @default(uuid())
+  productId     String          @map("product_id")
+  userId        String?         @map("user_id")
+  quantityChange Int            @map("quantity_change")
+  previousStock Int             @map("previous_stock")
+  newStock      Int             @map("new_stock")
+  actionType    StockActionType @map("action_type")
+  reason        String?
+  createdAt     DateTime        @default(now()) @map("created_at")
+
+  product       Product         @relation(fields: [productId], references: [id])
+  user          User?           @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@index([productId])
+  @@index([userId])
+  @@map("stock_logs")
 }

@@ -89,17 +89,57 @@ export async function PUT(
       }
     }
 
-    const product = await prisma.product.update({
-      where: { id: params.id },
-      data: validatedData,
-      include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
+    // Separate reason from validated data
+    const { reason, ...dataToUpdate } = body;
+    // We can rely on validatedData for the fields, but handle stock logic
+
+    // Calculate stock change
+    let quantityChange = 0;
+    let actionType = 'ADJUSTMENT'; // Default
+
+    if (validatedData.stockQuantity !== undefined && validatedData.stockQuantity !== existingProduct.stockQuantity) {
+      quantityChange = validatedData.stockQuantity - existingProduct.stockQuantity;
+      if (reason && reason.toLowerCase().includes('restock')) actionType = 'RESTOCK';
+      else if (reason && reason.toLowerCase().includes('return')) actionType = 'RETURN';
+      else if (reason && reason.toLowerCase().includes('theft')) actionType = 'THEFT';
+      // Add more logic or pass explicit actionType from UI if needed
+    }
+
+    // Use transaction
+    const product = await prisma.$transaction(async (tx) => {
+      const updated = await tx.product.update({
+        where: { id: params.id },
+        data: validatedData,
+        include: {
+          category: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
         },
-      },
+      });
+
+      if (quantityChange !== 0) {
+        // Get user ID
+        const { getServerSession } = await import("next-auth");
+        const { authOptions } = await import("@/lib/auth");
+        const session = await getServerSession(authOptions);
+        const user = session?.user?.email ? await tx.user.findUnique({ where: { email: session.user.email } }) : null;
+
+        await tx.stockLog.create({
+          data: {
+            productId: params.id,
+            userId: user?.id,
+            quantityChange,
+            previousStock: existingProduct.stockQuantity,
+            newStock: updated.stockQuantity,
+            actionType: actionType as any, // Cast to enum
+            reason: reason || 'Manual Adjustment',
+          }
+        });
+      }
+      return updated;
     });
 
     return NextResponse.json(product);

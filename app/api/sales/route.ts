@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getServerSession } from "next-auth";
+import { authOptions } from "@/lib/auth";
 
 export const dynamic = 'force-dynamic';
 
@@ -101,9 +103,7 @@ export async function POST(req: Request) {
     // I'll assume the request might need to include userId or I fetch the first user as fallback if no session?
     // No, that's bad security.
 
-    // Let's import getServerSession.
-    const { getServerSession } = await import('next-auth');
-    const { authOptions } = await import('@/lib/auth');
+    // Verify Session
     const session = await getServerSession(authOptions);
 
     if (!session?.user?.email) {
@@ -183,13 +183,25 @@ export async function POST(req: Request) {
           },
         });
 
-        await tx.product.update({
+        const updatedProduct = await tx.product.update({
           where: { id: item.productId },
           data: {
             stockQuantity: {
               decrement: item.quantity,
             },
           },
+        });
+
+        await tx.stockLog.create({
+          data: {
+            productId: item.productId,
+            userId: user.id,
+            quantityChange: -item.quantity,
+            previousStock: updatedProduct.stockQuantity + item.quantity,
+            newStock: updatedProduct.stockQuantity,
+            actionType: 'SALE',
+            reason: `Sale ${newSale.id.substring(0, 8)}`
+          }
         });
       }
 

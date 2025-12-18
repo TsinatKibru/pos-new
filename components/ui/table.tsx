@@ -6,7 +6,7 @@ const Table = React.forwardRef<
   HTMLTableElement,
   React.HTMLAttributes<HTMLTableElement>
 >(({ className, ...props }, ref) => (
-  <div className="relative w-full overflow-auto">
+  <div className="relative w-full overflow-auto scrollbar-thin scrollbar-thumb-slate-300 scrollbar-track-slate-100 hover:scrollbar-thumb-slate-400">
     <table
       ref={ref}
       className={cn('w-full caption-bottom text-sm', className)}
@@ -20,9 +20,28 @@ const TableHeader = React.forwardRef<
   HTMLTableSectionElement,
   React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-  <thead ref={ref} className={cn('[&_tr]:border-b', className)} {...props} />
+  <thead
+    ref={ref}
+    className={cn('[&_tr]:border-b', className)}
+    {...props}
+  />
 ));
 TableHeader.displayName = 'TableHeader';
+
+const TableHeaderSticky = React.forwardRef<
+  HTMLTableSectionElement,
+  React.HTMLAttributes<HTMLTableSectionElement>
+>(({ className, ...props }, ref) => (
+  <thead
+    ref={ref}
+    className={cn(
+      '[&_tr]:border-b sticky top-0 z-10 bg-white shadow-sm',
+      className
+    )}
+    {...props}
+  />
+));
+TableHeaderSticky.displayName = 'TableHeaderSticky';
 
 const TableBody = React.forwardRef<
   HTMLTableSectionElement,
@@ -58,13 +77,29 @@ const TableRow = React.forwardRef<
   <tr
     ref={ref}
     className={cn(
-      'border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted',
+      'border-b border-slate-100 transition-all duration-200 hover:bg-slate-50/80 hover:shadow-sm data-[state=selected]:bg-muted',
       className
     )}
     {...props}
   />
 ));
 TableRow.displayName = 'TableRow';
+
+const TableRowStriped = React.forwardRef<
+  HTMLTableRowElement,
+  React.HTMLAttributes<HTMLTableRowElement> & { index?: number }
+>(({ className, index, ...props }, ref) => (
+  <tr
+    ref={ref}
+    className={cn(
+      'border-b border-slate-100 transition-all duration-200 hover:bg-slate-100/80 hover:shadow-sm data-[state=selected]:bg-muted',
+      index !== undefined && index % 2 === 0 ? 'bg-white' : 'bg-slate-50/40',
+      className
+    )}
+    {...props}
+  />
+));
+TableRowStriped.displayName = 'TableRowStriped';
 
 const TableHead = React.forwardRef<
   HTMLTableCellElement,
@@ -73,7 +108,7 @@ const TableHead = React.forwardRef<
   <th
     ref={ref}
     className={cn(
-      'h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:has([role=checkbox])]:pr-0',
+      'h-12 px-4 text-left align-middle font-semibold text-slate-700 bg-gradient-to-b from-slate-50 to-slate-100/50 [&:has([role=checkbox])]:pr-0 text-xs uppercase tracking-wider',
       className
     )}
     {...props}
@@ -87,7 +122,7 @@ const TableCell = React.forwardRef<
 >(({ className, ...props }, ref) => (
   <td
     ref={ref}
-    className={cn('p-4 align-middle [&:has([role=checkbox])]:pr-0', className)}
+    className={cn('px-4 py-3.5 align-middle [&:has([role=checkbox])]:pr-0', className)}
     {...props}
   />
 ));
@@ -108,10 +143,12 @@ TableCaption.displayName = 'TableCaption';
 export {
   Table,
   TableHeader,
+  TableHeaderSticky,
   TableBody,
   TableFooter,
   TableHead,
   TableRow,
+  TableRowStriped,
   TableCell,
   TableCaption,
 };

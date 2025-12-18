@@ -259,7 +259,13 @@ export function ProductForm({
                 type="number"
                 {...register("stockQuantity")}
                 placeholder="0"
+                disabled={!!product}
               />
+              {!!product && (
+                <p className="text-xs text-slate-500">
+                  To adjust stock, use the "Adjust" button in the Inventory page.
+                </p>
+              )}
               {errors.stockQuantity && (
                 <p className="text-sm text-red-600">
                   {errors.stockQuantity.message}

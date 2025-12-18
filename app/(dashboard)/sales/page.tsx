@@ -8,11 +8,12 @@ import {
     TableBody,
     TableCell,
     TableHead,
-    TableHeader,
-    TableRow,
+    TableHeaderSticky,
+    TableRowStriped,
 } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
 import { SaleDetails } from "@/components/sales/sale-details";
-import { Search, Calendar, Eye, Download } from "lucide-react";
+import { Search, Calendar, Eye, Download, CheckCircle2, Receipt, User } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
 import { toast } from "sonner";
 import { exportToCSV } from "@/lib/export-utils";
@@ -163,74 +164,89 @@ export default function SalesPage() {
                         </div>
                     </div>
 
-                    <div className="overflow-x-auto">
+                    <div className="overflow-x-auto rounded-lg border border-slate-200 shadow-sm">
                         <Table>
-                            <TableHeader>
-                                <TableRow className="bg-slate-50 hover:bg-slate-50">
-                                    <TableHead>Date</TableHead>
+                            <TableHeaderSticky>
+                                <TableRowStriped index={0}>
+                                    <TableHead>Date & Time</TableHead>
                                     <TableHead>Invoice #</TableHead>
                                     <TableHead>Customer</TableHead>
                                     <TableHead>Cashier</TableHead>
                                     <TableHead className="text-right">Total</TableHead>
                                     <TableHead className="text-center">Status</TableHead>
                                     <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
+                                </TableRowStriped>
+                            </TableHeaderSticky>
                             <TableBody>
                                 {loading ? (
-                                    <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-8">
-                                            Loading...
+                                    <TableRowStriped index={0}>
+                                        <TableCell colSpan={7} className="text-center py-12">
+                                            <div className="flex flex-col items-center gap-2">
+                                                <div className="h-8 w-8 animate-spin rounded-full border-4 border-slate-200 border-t-slate-600"></div>
+                                                <p className="text-slate-500">Loading sales...</p>
+                                            </div>
                                         </TableCell>
-                                    </TableRow>
+                                    </TableRowStriped>
                                 ) : sales.length === 0 ? (
-                                    <TableRow>
-                                        <TableCell colSpan={7} className="text-center py-8 text-slate-500">
-                                            No sales found matching criteria
+                                    <TableRowStriped index={0}>
+                                        <TableCell colSpan={7} className="text-center py-12 text-slate-500">
+                                            <Receipt className="h-12 w-12 mx-auto mb-3 text-slate-300" />
+                                            <p className="font-medium">No sales found matching criteria</p>
                                         </TableCell>
-                                    </TableRow>
+                                    </TableRowStriped>
                                 ) : (
-                                    sales.map((sale) => (
-                                        <TableRow key={sale.id}>
-                                            <TableCell className="text-slate-600">
+                                    sales.map((sale, index) => (
+                                        <TableRowStriped key={sale.id} index={index}>
+                                            <TableCell>
                                                 <div className="flex flex-col">
-                                                    <span className="font-medium">{new Date(sale.createdAt).toLocaleDateString()}</span>
-                                                    <span className="text-xs">{new Date(sale.createdAt).toLocaleTimeString()}</span>
+                                                    <span className="font-medium text-slate-900 text-sm">{new Date(sale.createdAt).toLocaleDateString()}</span>
+                                                    <span className="text-xs text-slate-500">{new Date(sale.createdAt).toLocaleTimeString()}</span>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="font-mono text-xs text-slate-500">
-                                                {sale.id.slice(0, 8)}...
+                                            <TableCell>
+                                                <div className="flex items-center gap-2">
+                                                    <Receipt className="h-3.5 w-3.5 text-slate-400" />
+                                                    <code className="text-xs font-mono text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                                                        {sale.id.slice(0, 8)}
+                                                    </code>
+                                                </div>
                                             </TableCell>
                                             <TableCell>
                                                 {sale.customer ? (
-                                                    <span className="font-medium text-slate-900">{sale.customer.fullName}</span>
+                                                    <div className="flex items-center gap-2">
+                                                        <User className="h-3.5 w-3.5 text-slate-400" />
+                                                        <span className="font-medium text-slate-900">{sale.customer.fullName}</span>
+                                                    </div>
                                                 ) : (
-                                                    <span className="text-slate-500 italic">Walk-in</span>
+                                                    <span className="text-slate-500 italic text-sm">Walk-in</span>
                                                 )}
                                             </TableCell>
-                                            <TableCell className="text-slate-600">
+                                            <TableCell className="text-slate-700 font-medium">
                                                 {sale.user?.fullName}
                                             </TableCell>
-                                            <TableCell className="text-right font-bold text-slate-900">
-                                                ${Number(sale.totalAmount).toFixed(2)}
+                                            <TableCell className="text-right">
+                                                <span className="font-bold text-slate-900 text-base">
+                                                    ${Number(sale.totalAmount).toFixed(2)}
+                                                </span>
                                             </TableCell>
                                             <TableCell className="text-center">
-                                                <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                                <Badge variant="successSubtle" className="gap-1">
+                                                    <CheckCircle2 className="h-3 w-3" />
                                                     {sale.status}
-                                                </span>
+                                                </Badge>
                                             </TableCell>
                                             <TableCell className="text-right">
                                                 <Button
                                                     variant="ghost"
                                                     size="sm"
                                                     onClick={() => handleViewDetails(sale)}
-                                                    className="gap-2"
+                                                    className="gap-1.5 hover:bg-slate-100"
                                                 >
-                                                    <Eye className="h-4 w-4" />
+                                                    <Eye className="h-3.5 w-3.5" />
                                                     View
                                                 </Button>
                                             </TableCell>
-                                        </TableRow>
+                                        </TableRowStriped>
                                     ))
                                 )}
                             </TableBody>

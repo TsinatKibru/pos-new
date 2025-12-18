@@ -78,13 +78,42 @@ const config: Config = {
             height: '0',
           },
         },
+        shimmer: {
+          '0%': { backgroundPosition: '-1000px 0' },
+          '100%': { backgroundPosition: '1000px 0' },
+        },
+        'pulse-subtle': {
+          '0%, 100%': { opacity: '1' },
+          '50%': { opacity: '0.8' },
+        },
       },
       animation: {
         'accordion-down': 'accordion-down 0.2s ease-out',
         'accordion-up': 'accordion-up 0.2s ease-out',
+        shimmer: 'shimmer 2s infinite linear',
+        'pulse-subtle': 'pulse-subtle 2s cubic-bezier(0.4, 0, 0.6, 1) infinite',
       },
     },
   },
-  plugins: [require('tailwindcss-animate')],
+  plugins: [
+    require('tailwindcss-animate'),
+    function ({ addUtilities }: any) {
+      const newUtilities = {
+        '.scrollbar-thin': {
+          'scrollbar-width': 'thin',
+        },
+        '.scrollbar-thumb-slate-300': {
+          'scrollbar-color': '#cbd5e1 transparent',
+        },
+        '.scrollbar-track-slate-100': {
+          'scrollbar-color': '#cbd5e1 #f1f5f9',
+        },
+        '.scrollbar-thumb-slate-400:hover': {
+          'scrollbar-color': '#94a3b8 #f1f5f9',
+        },
+      };
+      addUtilities(newUtilities);
+    },
+  ],
 };
 export default config;

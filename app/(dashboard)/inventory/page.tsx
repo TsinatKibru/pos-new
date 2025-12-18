@@ -11,9 +11,10 @@ import {
   TableBody,
   TableCell,
   TableHead,
-  TableHeader,
-  TableRow,
+  TableHeaderSticky,
+  TableRowStriped,
 } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -22,7 +23,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-import { ChevronLeft, AlertCircle, Plus, Edit2, Trash2, Search, Download } from 'lucide-react';
+import { ChevronLeft, AlertCircle, Plus, Edit2, Trash2, Search, Download, History, Package, TrendingUp, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { exportToCSV } from '@/lib/export-utils';
 
@@ -59,7 +60,23 @@ export default function InventoryPage() {
     type: 'add',
     reason: '',
   });
+  const [historyDialog, setHistoryDialog] = useState(false);
+  const [stockLogs, setStockLogs] = useState<any[]>([]);
   const [lowStockThreshold, setLowStockThreshold] = useState(10);
+
+  const handleHistoryClick = async (product: Product) => {
+    setSelectedProduct(product);
+    setHistoryDialog(true);
+    try {
+      const res = await fetch(`/api/inventory/logs?productId=${product.id}`);
+      if (res.ok) {
+        setStockLogs(await res.json());
+      }
+    } catch (err) {
+      console.error(err);
+      toast.error("Failed to load history");
+    }
+  };
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -123,6 +140,7 @@ export default function InventoryPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           stockQuantity: newQuantity,
+          reason: adjustment.reason,
         }),
       });
 
@@ -177,10 +195,16 @@ export default function InventoryPage() {
               <p className="text-slate-600 mt-1">Track and manage stock levels</p>
             </div>
           </div>
-          <Button variant="outline" onClick={handleExport} className="gap-2">
-            <Download className="h-4 w-4" />
-            Export Inventory
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={handleExport} className="gap-2">
+              <Download className="h-4 w-4" />
+              Export Inventory
+            </Button>
+            <Button variant="outline" onClick={() => router.push('/inventory/history')} className="gap-2">
+              <History className="h-4 w-4" />
+              Full History
+            </Button>
+          </div>
         </div>
 
         <div className="grid gap-4 md:grid-cols-3">
@@ -259,41 +283,60 @@ export default function InventoryPage() {
             ) : filteredProducts.length === 0 ? (
               <div className="text-center py-8 text-slate-500">No products found</div>
             ) : (
-              <div className="rounded-lg border border-slate-200 overflow-hidden">
+              <div className="rounded-lg border border-slate-200 overflow-hidden shadow-sm">
                 <Table>
-                  <TableHeader>
-                    <TableRow className="bg-slate-50 border-b border-slate-200 hover:bg-slate-50">
-                      <TableHead className="font-semibold text-slate-700">Product</TableHead>
-                      <TableHead className="font-semibold text-slate-700">SKU</TableHead>
-                      <TableHead className="text-right font-semibold text-slate-700">
+                  <TableHeaderSticky>
+                    <TableRowStriped index={0}>
+                      <TableHead>Product</TableHead>
+                      <TableHead>SKU</TableHead>
+                      <TableHead className="text-right">
                         Current Stock
                       </TableHead>
-                      <TableHead className="text-right font-semibold text-slate-700">
+                      <TableHead className="text-right">
                         Unit Cost
                       </TableHead>
-                      <TableHead className="text-right font-semibold text-slate-700">
+                      <TableHead className="text-right">
                         Total Value
                       </TableHead>
-                      <TableHead className="font-semibold text-slate-700">Status</TableHead>
-                      <TableHead className="text-right font-semibold text-slate-700">
+                      <TableHead>Status</TableHead>
+                      <TableHead className="text-right">
                         Actions
                       </TableHead>
-                    </TableRow>
-                  </TableHeader>
+                    </TableRowStriped>
+                  </TableHeaderSticky>
                   <TableBody>
-                    {filteredProducts.map((product) => {
+                    {filteredProducts.map((product, index) => {
                       const totalValue = product.stockQuantity * Number(product.cost);
                       const isLowStock = product.stockQuantity < lowStockThreshold;
+                      const stockPercentage = Math.min((product.stockQuantity / (lowStockThreshold * 2)) * 100, 100);
 
                       return (
-                        <TableRow key={product.id} className="border-b border-slate-200 hover:bg-slate-50">
-                          <TableCell className="font-medium text-slate-900">
-                            {product.name}
+                        <TableRowStriped key={product.id} index={index}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Package className="h-4 w-4 text-slate-400" />
+                              <span className="font-medium text-slate-900">
+                                {product.name}
+                              </span>
+                            </div>
                           </TableCell>
-                          <TableCell className="text-slate-600">{product.sku}</TableCell>
+                          <TableCell>
+                            <code className="text-xs font-mono text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                              {product.sku}
+                            </code>
+                          </TableCell>
                           <TableCell className="text-right">
-                            <div className="font-semibold text-slate-900">
-                              {product.stockQuantity}
+                            <div className="flex flex-col items-end gap-1">
+                              <div className="font-semibold text-slate-900 text-base">
+                                {product.stockQuantity}
+                              </div>
+                              <div className="w-16 h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                                <div
+                                  className={`h-full transition-all duration-300 ${isLowStock ? 'bg-orange-500' : 'bg-green-500'
+                                    }`}
+                                  style={{ width: `${stockPercentage}%` }}
+                                />
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell className="text-right text-slate-600">
@@ -303,27 +346,41 @@ export default function InventoryPage() {
                             ${(totalValue / 100).toFixed(2)}
                           </TableCell>
                           <TableCell>
-                            <div
-                              className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${isLowStock
-                                ? 'bg-orange-100 text-orange-700'
-                                : 'bg-green-100 text-green-700'
-                                }`}
-                            >
-                              {isLowStock ? 'Low Stock' : 'In Stock'}
-                            </div>
+                            {isLowStock ? (
+                              <Badge variant="warningSubtle" className="gap-1">
+                                <AlertCircle className="h-3 w-3" />
+                                Low Stock
+                              </Badge>
+                            ) : (
+                              <Badge variant="successSubtle" className="gap-1">
+                                <CheckCircle className="h-3 w-3" />
+                                In Stock
+                              </Badge>
+                            )}
                           </TableCell>
                           <TableCell className="text-right">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handleAdjustmentClick(product)}
-                              className="gap-2"
-                            >
-                              <Edit2 className="h-4 w-4" />
-                              Adjust
-                            </Button>
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleAdjustmentClick(product)}
+                                className="gap-1.5 hover:bg-slate-100"
+                              >
+                                <Edit2 className="h-3.5 w-3.5" />
+                                Adjust
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => handleHistoryClick(product)}
+                                className="gap-1.5 hover:bg-slate-100"
+                                title="View History"
+                              >
+                                <History className="h-3.5 w-3.5" />
+                              </Button>
+                            </div>
                           </TableCell>
-                        </TableRow>
+                        </TableRowStriped>
                       );
                     })}
                   </TableBody>
@@ -414,6 +471,57 @@ export default function InventoryPage() {
               Update Stock
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={historyDialog} onOpenChange={setHistoryDialog}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Stock History - {selectedProduct?.name}</DialogTitle>
+            <DialogDescription>Recent stock movements</DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[60vh] overflow-y-auto">
+            <Table>
+              <TableBody>
+                <TableRowStriped index={0}>
+                  <TableHead>Date</TableHead>
+                  <TableHead>User</TableHead>
+                  <TableHead>Action</TableHead>
+                  <TableHead className="text-right">Change</TableHead>
+                  <TableHead className="text-right">New Stock</TableHead>
+                  <TableHead>Reason</TableHead>
+                </TableRowStriped>
+                {stockLogs.map((log, index) => (
+                  <TableRowStriped key={log.id} index={index + 1}>
+                    <TableCell className="text-xs">{new Date(log.createdAt).toLocaleString()}</TableCell>
+                    <TableCell>{log.user?.fullName || 'System'}</TableCell>
+                    <TableCell>
+                      {log.actionType === 'SALE' ? (
+                        <Badge variant="successSubtle">Sale</Badge>
+                      ) : log.actionType === 'RESTOCK' ? (
+                        <Badge variant="infoSubtle">Restock</Badge>
+                      ) : (
+                        <Badge variant="secondary">{log.actionType}</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell className={`text-right font-bold ${log.quantityChange > 0 ? 'text-green-600' : 'text-red-600'}`}>
+                      {log.quantityChange > 0 ? '+' : ''}{log.quantityChange}
+                    </TableCell>
+                    <TableCell className="text-right">{log.newStock}</TableCell>
+                    <TableCell className="text-sm text-slate-500">{log.reason}</TableCell>
+                  </TableRowStriped>
+                ))}
+                {stockLogs.length === 0 && (
+                  <TableRowStriped index={1}>
+                    <TableCell colSpan={6} className="text-center py-8 text-slate-500">
+                      <Package className="h-10 w-10 mx-auto mb-2 text-slate-300" />
+                      <p className="font-medium">No history found</p>
+                    </TableCell>
+                  </TableRowStriped>
+                )}
+              </TableBody>
+            </Table>
+          </div>
         </DialogContent>
       </Dialog>
 
