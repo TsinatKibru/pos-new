@@ -26,6 +26,11 @@ export async function GET(request: NextRequest) {
     const isActive = searchParams.get('isActive');
     const lowStock = searchParams.get('lowStock');
 
+    // Pagination parameters (default 25 for inventory browsing)
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '25');
+    const skip = (page - 1) * limit;
+
     const where: any = {};
 
     if (search) {
@@ -48,22 +53,36 @@ export async function GET(request: NextRequest) {
       where.stockQuantity = { lte: 10 };
     }
 
-    const products = await prisma.product.findMany({
-      where,
-      include: {
-        category: {
-          select: {
-            id: true,
-            name: true,
+    // Fetch paginated data and total count in parallel
+    const [products, total] = await Promise.all([
+      prisma.product.findMany({
+        where,
+        include: {
+          category: {
+            select: {
+              id: true,
+              name: true,
+            },
           },
         },
-      },
-      orderBy: {
-        createdAt: 'desc',
+        orderBy: {
+          createdAt: 'desc',
+        },
+        skip,
+        take: limit,
+      }),
+      prisma.product.count({ where }),
+    ]);
+
+    return NextResponse.json({
+      data: products,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
       },
     });
-
-    return NextResponse.json(products);
   } catch (error) {
     if (error instanceof Error && error.message.includes('Unauthorized')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

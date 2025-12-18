@@ -13,6 +13,11 @@ export async function GET(req: Request) {
     const endDate = searchParams.get('endDate');
     const userId = searchParams.get('userId');
 
+    // Pagination parameters
+    const page = parseInt(searchParams.get('page') || '1');
+    const limit = parseInt(searchParams.get('limit') || '10');
+    const skip = (page - 1) * limit;
+
     const where: any = {};
 
     if (search) {
@@ -39,22 +44,35 @@ export async function GET(req: Request) {
       };
     }
 
-    const sales = await prisma.sale.findMany({
-      where,
-      include: {
-        customer: true,
-        user: true,
-        saleItems: {
-          include: {
-            product: true,
+    // Fetch paginated data and total count in parallel
+    const [sales, total] = await Promise.all([
+      prisma.sale.findMany({
+        where,
+        include: {
+          customer: true,
+          user: true,
+          saleItems: {
+            include: {
+              product: true,
+            },
           },
         },
-      },
-      orderBy: { createdAt: 'desc' },
-      take: 100, // Limit to 100 for now to prevent overload
-    });
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      prisma.sale.count({ where }),
+    ]);
 
-    return NextResponse.json(sales);
+    return NextResponse.json({
+      data: sales,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+      },
+    });
   } catch (error) {
     console.error('Failed to fetch sales:', error);
     return NextResponse.json(

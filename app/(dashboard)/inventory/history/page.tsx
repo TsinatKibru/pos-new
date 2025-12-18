@@ -16,6 +16,13 @@ import { Badge } from "@/components/ui/badge";
 import { ChevronLeft, Download, RefreshCw, TrendingUp, TrendingDown, Package, AlertTriangle, ShoppingCart } from "lucide-react";
 import { exportToCSV } from "@/lib/export-utils";
 import { toast } from "sonner";
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationNext,
+    PaginationPrevious,
+} from "@/components/ui/pagination";
 
 interface StockLog {
     id: string;
@@ -34,13 +41,25 @@ export default function StockHistoryPage() {
     const [logs, setLogs] = useState<StockLog[]>([]);
     const [loading, setLoading] = useState(true);
 
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+
     const fetchLogs = async () => {
         setLoading(true);
         try {
-            const res = await fetch("/api/inventory/logs");
+            const params = new URLSearchParams();
+            params.append("page", currentPage.toString());
+            params.append("limit", pageSize.toString());
+
+            const res = await fetch(`/api/inventory/logs?${params}`);
             if (!res.ok) throw new Error("Failed to fetch logs");
-            const data = await res.json();
-            setLogs(data);
+            const result = await res.json();
+            setLogs(result.data);
+            setTotalPages(result.pagination.totalPages);
+            setTotalCount(result.pagination.total);
         } catch (error) {
             console.error(error);
             toast.error("Failed to load history");
@@ -51,7 +70,7 @@ export default function StockHistoryPage() {
 
     useEffect(() => {
         fetchLogs();
-    }, []);
+    }, [currentPage, pageSize]);
 
     const handleExport = () => {
         if (logs.length === 0) return;
@@ -198,6 +217,51 @@ export default function StockHistoryPage() {
                                 </TableBody>
                             </Table>
                         </div>
+
+                        {/* Pagination Controls */}
+                        {!loading && logs.length > 0 && (
+                            <div className="flex items-center justify-between px-2 py-4 border-t border-slate-200 mt-4">
+                                <div className="text-sm text-slate-600">
+                                    Showing {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, totalCount)} of {totalCount}
+                                </div>
+
+                                <div className="flex items-center gap-4">
+                                    <select
+                                        value={pageSize}
+                                        onChange={(e) => {
+                                            setPageSize(Number(e.target.value));
+                                            setCurrentPage(1);
+                                        }}
+                                        className="flex h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2"
+                                    >
+                                        <option value="10">10 per page</option>
+                                        <option value="25">25 per page</option>
+                                        <option value="50">50 per page</option>
+                                        <option value="100">100 per page</option>
+                                    </select>
+
+                                    <Pagination>
+                                        <PaginationContent>
+                                            <PaginationItem>
+                                                <PaginationPrevious
+                                                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                                    className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                                                />
+                                            </PaginationItem>
+                                            <PaginationItem>
+                                                <span className="text-sm px-4">Page {currentPage} of {totalPages}</span>
+                                            </PaginationItem>
+                                            <PaginationItem>
+                                                <PaginationNext
+                                                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                                    className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                                                />
+                                            </PaginationItem>
+                                        </PaginationContent>
+                                    </Pagination>
+                                </div>
+                            </div>
+                        )}
                     </CardContent>
                 </Card>
             </div>

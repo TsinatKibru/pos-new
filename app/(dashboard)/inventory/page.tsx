@@ -26,6 +26,13 @@ import {
 import { ChevronLeft, AlertCircle, Plus, Edit2, Trash2, Search, Download, History, Package, TrendingUp, CheckCircle } from 'lucide-react';
 import { toast } from 'sonner';
 import { exportToCSV } from '@/lib/export-utils';
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from '@/components/ui/pagination';
 
 interface Product {
   id: string;
@@ -64,6 +71,12 @@ export default function InventoryPage() {
   const [stockLogs, setStockLogs] = useState<any[]>([]);
   const [lowStockThreshold, setLowStockThreshold] = useState(10);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
   const handleHistoryClick = async (product: Product) => {
     setSelectedProduct(product);
     setHistoryDialog(true);
@@ -85,8 +98,12 @@ export default function InventoryPage() {
   }, [status, router]);
 
   useEffect(() => {
-    fetchProducts();
+    setCurrentPage(1); // Reset to page 1 when filters change
   }, [search, showLowStockOnly]);
+
+  useEffect(() => {
+    fetchProducts();
+  }, [currentPage, pageSize, search, showLowStockOnly]);
 
   const fetchProducts = async () => {
     try {
@@ -94,16 +111,19 @@ export default function InventoryPage() {
       const params = new URLSearchParams();
       if (search) params.append('search', search);
       if (showLowStockOnly) params.append('lowStock', 'true');
+      params.append('page', currentPage.toString());
+      params.append('limit', pageSize.toString());
 
       const response = await fetch(`/api/products?${params}`);
       if (!response.ok) throw new Error('Failed to fetch products');
 
-      const data = await response.json();
-      const productsWithThreshold = data.map((p: any) => ({
+      const result = await response.json();
+      setProducts(result.data.map((p: any) => ({
         ...p,
         lowStockThreshold: lowStockThreshold,
-      }));
-      setProducts(productsWithThreshold);
+      })));
+      setTotalPages(result.pagination.totalPages);
+      setTotalCount(result.pagination.total);
     } catch (error) {
       console.error('Failed to fetch products:', error);
       toast.error('Failed to load inventory');
@@ -385,6 +405,51 @@ export default function InventoryPage() {
                     })}
                   </TableBody>
                 </Table>
+              </div>
+            )}
+
+            {/* Pagination Controls */}
+            {!loading && filteredProducts.length > 0 && (
+              <div className="flex items-center justify-between px-2 py-4 border-t border-slate-200 mt-4">
+                <div className="text-sm text-slate-600">
+                  Showing {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, totalCount)} of {totalCount}
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="flex h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2"
+                  >
+                    <option value="10">10 per page</option>
+                    <option value="25">25 per page</option>
+                    <option value="50">50 per page</option>
+                    <option value="100">100 per page</option>
+                  </select>
+
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                          className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        />
+                      </PaginationItem>
+                      <PaginationItem>
+                        <span className="text-sm px-4">Page {currentPage} of {totalPages}</span>
+                      </PaginationItem>
+                      <PaginationItem>
+                        <PaginationNext
+                          onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                          className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
               </div>
             )}
           </CardContent>

@@ -12,6 +12,14 @@ import {
     TableRowStriped,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import {
+    Pagination,
+    PaginationContent,
+    PaginationItem,
+    PaginationLink,
+    PaginationNext,
+    PaginationPrevious,
+} from "@/components/ui/pagination";
 import { SaleDetails } from "@/components/sales/sale-details";
 import { Search, Calendar, Eye, Download, CheckCircle2, Receipt, User } from "lucide-react";
 import { formatDistanceToNow, format } from "date-fns";
@@ -25,6 +33,12 @@ export default function SalesPage() {
     const [selectedSale, setSelectedSale] = useState<any>(null);
     const [detailOpen, setDetailOpen] = useState(false);
 
+    // Pagination state
+    const [currentPage, setCurrentPage] = useState(1);
+    const [pageSize, setPageSize] = useState(10);
+    const [totalPages, setTotalPages] = useState(1);
+    const [totalCount, setTotalCount] = useState(0);
+
     // Filters
     const [cashiers, setCashiers] = useState<any[]>([]);
     const [selectedCashier, setSelectedCashier] = useState("all");
@@ -37,8 +51,12 @@ export default function SalesPage() {
     }, []);
 
     useEffect(() => {
-        fetchSales();
+        setCurrentPage(1); // Reset to page 1 when filters change
     }, [search, selectedCashier, startDate, endDate]);
+
+    useEffect(() => {
+        fetchSales();
+    }, [currentPage, pageSize, search, selectedCashier, startDate, endDate]);
 
     const fetchCashiers = async () => {
         try {
@@ -57,15 +75,19 @@ export default function SalesPage() {
             if (selectedCashier && selectedCashier !== 'all') params.append("userId", selectedCashier);
             if (startDate) params.append("startDate", startDate);
             if (endDate) params.append("endDate", endDate);
+            params.append("page", currentPage.toString());
+            params.append("limit", pageSize.toString());
 
             const response = await fetch(`/api/sales?${params}`);
             if (!response.ok) throw new Error("Failed to fetch sales");
 
-            const data = await response.json();
-            setSales(data);
+            const result = await response.json();
+            setSales(result.data);
+            setTotalPages(result.pagination.totalPages);
+            setTotalCount(result.pagination.total);
 
             // Calculate total
-            const total = data.reduce((sum: number, sale: any) => sum + Number(sale.totalAmount), 0);
+            const total = result.data.reduce((sum: number, sale: any) => sum + Number(sale.totalAmount), 0);
             setTotalSales(total);
         } catch (error) {
             console.error("Error fetching sales:", error);
@@ -252,6 +274,51 @@ export default function SalesPage() {
                             </TableBody>
                         </Table>
                     </div>
+
+                    {/* Pagination Controls */}
+                    {!loading && sales.length > 0 && (
+                        <div className="flex items-center justify-between px-2 py-4 border-t border-slate-200">
+                            <div className="text-sm text-slate-600">
+                                Showing {(currentPage - 1) * pageSize + 1}-{Math.min(currentPage * pageSize, totalCount)} of {totalCount}
+                            </div>
+
+                            <div className="flex items-center gap-4">
+                                <select
+                                    value={pageSize}
+                                    onChange={(e) => {
+                                        setPageSize(Number(e.target.value));
+                                        setCurrentPage(1);
+                                    }}
+                                    className="flex h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2"
+                                >
+                                    <option value="10">10 per page</option>
+                                    <option value="25">25 per page</option>
+                                    <option value="50">50 per page</option>
+                                    <option value="100">100 per page</option>
+                                </select>
+
+                                <Pagination>
+                                    <PaginationContent>
+                                        <PaginationItem>
+                                            <PaginationPrevious
+                                                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                                className={currentPage === 1 ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                                            />
+                                        </PaginationItem>
+                                        <PaginationItem>
+                                            <span className="text-sm px-4">Page {currentPage} of {totalPages}</span>
+                                        </PaginationItem>
+                                        <PaginationItem>
+                                            <PaginationNext
+                                                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                                className={currentPage === totalPages ? 'pointer-events-none opacity-50' : 'cursor-pointer'}
+                                            />
+                                        </PaginationItem>
+                                    </PaginationContent>
+                                </Pagination>
+                            </div>
+                        </div>
+                    )}
                 </div>
             </div>
 
