@@ -92,7 +92,7 @@ export default function POSPage() {
 
         if (productsRes.ok) {
           const data = await productsRes.json();
-          setProducts(Array.isArray(data) ? data : data.products || []);
+          setProducts(data.data || []);
         }
 
         if (categoriesRes.ok) {

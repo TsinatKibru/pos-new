@@ -141,7 +141,7 @@ export function ProductForm({
       });
       setImagePreview(null);
     }
-  }, [product, reset]);
+  }, [product, reset, open]);
 
   useEffect(() => {
     if (watchImageUrl) {
