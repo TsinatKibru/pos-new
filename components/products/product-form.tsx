@@ -24,8 +24,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Switch } from "@/components/ui/switch";
-import { Loader2, Upload, X } from "lucide-react";
+import { Loader2, Plus, X, Check } from "lucide-react";
 import { ImageUpload } from "@/components/ui/image-upload";
+import { toast } from "sonner";
 
 const productSchema = z.object({
   name: z.string().min(1, "Product name is required"),
@@ -67,6 +68,7 @@ interface ProductFormProps {
   onSubmit: (data: any) => Promise<void>;
   product?: Product | null;
   categories: Category[];
+  onCategoryCreated?: () => Promise<void>;
 }
 
 export function ProductForm({
@@ -75,9 +77,13 @@ export function ProductForm({
   onSubmit,
   product,
   categories,
+  onCategoryCreated,
 }: ProductFormProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [showAddCategory, setShowAddCategory] = useState(false);
+  const [newCategoryName, setNewCategoryName] = useState("");
+  const [isCreatingCategory, setIsCreatingCategory] = useState(false);
 
   const {
     register,
@@ -142,6 +148,42 @@ export function ProductForm({
       setImagePreview(watchImageUrl);
     }
   }, [watchImageUrl]);
+
+  const handleCreateCategory = async () => {
+    if (!newCategoryName.trim()) {
+      toast.error("Category name is required");
+      return;
+    }
+
+    setIsCreatingCategory(true);
+    try {
+      const response = await fetch("/api/categories", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name: newCategoryName }),
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to create category");
+      }
+
+      const category = await response.json();
+      toast.success("Category created successfully");
+      setNewCategoryName("");
+      setShowAddCategory(false);
+
+      if (onCategoryCreated) {
+        await onCategoryCreated();
+      }
+
+      // Auto-select the new category
+      setValue("categoryId", category.id);
+    } catch (error) {
+      toast.error("Failed to create category");
+    } finally {
+      setIsCreatingCategory(false);
+    }
+  };
 
   const handleFormSubmit = async (data: ProductFormData) => {
     setIsLoading(true);
@@ -274,25 +316,61 @@ export function ProductForm({
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="categoryId">Category</Label>
-              <Select
-                value={watch("categoryId") || "none"}
-                onValueChange={(value) =>
-                  setValue("categoryId", value === "none" ? "" : value)
-                }
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="none">No category</SelectItem>
-                  {categories.map((category) => (
-                    <SelectItem key={category.id} value={category.id}>
-                      {category.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center justify-between">
+                <Label htmlFor="categoryId">Category</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 px-2 text-xs gap-1"
+                  onClick={() => setShowAddCategory(!showAddCategory)}
+                >
+                  <Plus className="h-3 w-3" />
+                  {showAddCategory ? "Cancel" : "Add Category"}
+                </Button>
+              </div>
+
+              {showAddCategory ? (
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Category name"
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    size="icon"
+                    onClick={handleCreateCategory}
+                    disabled={isCreatingCategory}
+                  >
+                    {isCreatingCategory ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Check className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+              ) : (
+                <Select
+                  value={watch("categoryId") || "none"}
+                  onValueChange={(value) =>
+                    setValue("categoryId", value === "none" ? "" : value)
+                  }
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">No category</SelectItem>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.id}>
+                        {category.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
 
             {/* <div className="col-span-2 space-y-2">

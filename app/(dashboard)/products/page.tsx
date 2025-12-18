@@ -363,6 +363,7 @@ export default function ProductsPage() {
         onSubmit={selectedProduct ? handleUpdateProduct : handleCreateProduct}
         product={selectedProduct}
         categories={categories}
+        onCategoryCreated={fetchCategories}
       />
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
