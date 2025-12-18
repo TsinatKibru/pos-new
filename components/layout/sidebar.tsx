@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
@@ -76,6 +77,50 @@ export function Sidebar() {
                     <span>POS System</span>
                 </div>
             </div>
+
+            {/* User Profile Section */}
+            {session?.user && (
+                <div className="mx-4 mb-4 p-3 rounded-lg bg-slate-800/50 border border-slate-700/50">
+                    <div className="flex items-center gap-3">
+                        {/* Avatar with image or initials */}
+                        <div className="flex-shrink-0 h-10 w-10 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center text-white font-semibold text-sm shadow-lg overflow-hidden">
+                            {session.user.image ? (
+                                <Image
+                                    src={session.user.image}
+                                    alt={session.user.name || 'User'}
+                                    width={40}
+                                    height={40}
+                                    className="object-cover w-full h-full"
+                                />
+                            ) : (
+                                <span>
+                                    {session.user.name
+                                        ?.split(' ')
+                                        .map(n => n[0])
+                                        .join('')
+                                        .toUpperCase()
+                                        .slice(0, 2) || 'U'}
+                                </span>
+                            )}
+                        </div>
+
+                        {/* User info */}
+                        <div className="flex-1 min-w-0">
+                            <p className="text-sm font-medium text-white truncate">
+                                {session.user.name || 'User'}
+                            </p>
+                            <p className="text-xs text-slate-400 truncate">
+                                {session.user.email}
+                            </p>
+                            {session.user.role && (
+                                <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-500/20 text-blue-300 mt-1">
+                                    {session.user.role}
+                                </span>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
 
             <div className="flex-1 px-4 space-y-6 overflow-y-auto py-2">
                 {sidebarSections.map((section, idx) => {
