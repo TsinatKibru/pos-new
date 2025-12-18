@@ -6,7 +6,7 @@ This document provides a detailed overview of the POS System's technical archite
 
 The project is built using a modern full-stack architecture:
 
-- **Frontend**: Next.js 14 with App Router, utilizing React Server Components for performance and Client Components for interactivity.
+- **Frontend**: Next.js 13.5 with App Router, utilizing React Server Components for performance and Client Components for interactivity.
 - **Backend**: Next.js Server Actions and API Routes for business logic and database interactions.
 - **Database**: PostgreSQL hosted in Docker, managed through Prisma ORM for type-safe queries and schema migrations.
 - **State Management**: Local React state, Context API for global settings, and URL-based state for navigation.

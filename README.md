@@ -1,11 +1,11 @@
-# Modern POS System
+# POS System - Next.js 13.5
 
 [![Build Status](https://img.shields.io/badge/build-passing-brightgreen.svg)](https://github.com/yourusername/pos-system)
 [![Node Version](https://img.shields.io/badge/node-%3E%3D18.0.0-blue.svg)](https://nodejs.org)
-[![Next.js Version](https://img.shields.io/badge/Next.js-14-black.svg)](https://nextjs.org)
+[![Next.js Version](https://img.shields.io/badge/Next.js-13.5.1-black.svg)](https://nextjs.org)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 
-A high-performance, modern Point of Sale (POS) system built with Next.js 14, TypeScript, Prisma, and PostgreSQL. Designed for speed, reliability, and ease of use in retail environments.
+A high-performance, modern Point of Sale (POS) system built with Next.js 13.5, TypeScript, Prisma, and PostgreSQL. Designed for speed, reliability, and ease of use in retail environments.
 
 ## 🚀 Key Features
 
@@ -18,7 +18,7 @@ A high-performance, modern Point of Sale (POS) system built with Next.js 14, Typ
 
 ## 🛠️ Tech Stack
 
-- **Framework**: Next.js 14 (App Router)
+- **Framework**: Next.js 13.5 (App Router)
 - **Database**: PostgreSQL with Prisma ORM
 - **Styling**: Tailwind CSS & Lucide Icons
 - **UI Components**: shadcn/ui
