@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAuth } from '@/lib/auth-utils';
+import { validateApiAuth } from '@/lib/auth-utils';
 import { startOfDay, subDays, format } from 'date-fns';
 
 export const dynamic = 'force-dynamic';
 
 export async function GET() {
   try {
-    await requireAuth();
+    const { response } = await validateApiAuth();
+    if (response) return response;
 
     const [salesTrend, topProducts, paymentMethods, lowStockProducts] = await Promise.all([
       // 1. Sales Trend (Last 7 days)

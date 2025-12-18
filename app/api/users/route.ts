@@ -1,11 +1,12 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { requireAuth, requireAdmin } from '@/lib/auth-utils';
+import { validateApiAuth, validateAdminAuth } from '@/lib/auth-utils';
 import { hash } from 'bcryptjs';
 
 export async function GET() {
     try {
-        await requireAuth();
+        const { response } = await validateApiAuth();
+        if (response) return response;
 
         const users = await prisma.user.findMany({
             select: {
@@ -31,7 +32,8 @@ export async function GET() {
 
 export async function POST(req: Request) {
     try {
-        await requireAdmin();
+        const { response } = await validateAdminAuth();
+        if (response) return response;
 
         const body = await req.json();
         const { fullName, email, password, role, imageUrl } = body;
