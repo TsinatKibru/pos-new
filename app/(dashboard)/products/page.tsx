@@ -25,6 +25,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Plus, Search, Filter, AlertTriangle, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationItem,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 interface Product {
   id: string;
@@ -62,26 +69,40 @@ export default function ProductsPage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
 
+  // Pagination state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(24);
+  const [totalPages, setTotalPages] = useState(1);
+  const [totalCount, setTotalCount] = useState(0);
+
+  useEffect(() => {
+    setCurrentPage(1); // Reset to page 1 when filters change
+  }, [search, selectedCategory, showLowStock]);
+
   useEffect(() => {
     fetchProducts();
     fetchCategories();
-  }, [search, selectedCategory, showLowStock]);
+  }, [currentPage, pageSize, search, selectedCategory, showLowStock]);
 
   const fetchProducts = async () => {
     try {
+      setLoading(true);
       const params = new URLSearchParams();
       if (search) params.append("search", search);
       if (selectedCategory && selectedCategory !== "all") {
         params.append("categoryId", selectedCategory);
       }
-      //if (selectedCategory) params.append('categoryId', selectedCategory);
       if (showLowStock) params.append("lowStock", "true");
+      params.append("page", currentPage.toString());
+      params.append("limit", pageSize.toString());
 
       const response = await fetch(`/api/products?${params}`);
       if (!response.ok) throw new Error("Failed to fetch products");
 
-      const data = await response.json();
-      setProducts(data);
+      const result = await response.json();
+      setProducts(result.data);
+      setTotalPages(result.pagination.totalPages);
+      setTotalCount(result.pagination.total);
     } catch (error) {
       toast.error("Failed to load products");
     } finally {
@@ -263,16 +284,76 @@ export default function ProductsPage() {
             </Button>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {products.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                onEdit={handleEdit}
-                onDelete={handleDelete}
-              />
-            ))}
-          </div>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {products.map((product) => (
+                <ProductCard
+                  key={product.id}
+                  product={product}
+                  onEdit={handleEdit}
+                  onDelete={handleDelete}
+                />
+              ))}
+            </div>
+
+            {/* Pagination Controls */}
+            {!loading && products.length > 0 && (
+              <div className="flex items-center justify-between px-2 py-8 border-t border-slate-200 mt-6">
+                <div className="text-sm text-slate-600">
+                  Showing {(currentPage - 1) * pageSize + 1}-
+                  {Math.min(currentPage * pageSize, totalCount)} of {totalCount}
+                </div>
+
+                <div className="flex items-center gap-4">
+                  <select
+                    value={pageSize}
+                    onChange={(e) => {
+                      setPageSize(Number(e.target.value));
+                      setCurrentPage(1);
+                    }}
+                    className="flex h-9 rounded-md border border-slate-200 bg-white px-3 py-1 text-sm ring-offset-white focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-950 focus-visible:ring-offset-2"
+                  >
+                    <option value="12">12 per page</option>
+                    <option value="24">24 per page</option>
+                    <option value="48">48 per page</option>
+                    <option value="96">96 per page</option>
+                  </select>
+
+                  <Pagination>
+                    <PaginationContent>
+                      <PaginationItem>
+                        <PaginationPrevious
+                          onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                          className={
+                            currentPage === 1
+                              ? "pointer-events-none opacity-50"
+                              : "cursor-pointer"
+                          }
+                        />
+                      </PaginationItem>
+                      <PaginationItem>
+                        <span className="text-sm px-4">
+                          Page {currentPage} of {totalPages}
+                        </span>
+                      </PaginationItem>
+                      <PaginationItem>
+                        <PaginationNext
+                          onClick={() =>
+                            setCurrentPage((p) => Math.min(totalPages, p + 1))
+                          }
+                          className={
+                            currentPage === totalPages
+                              ? "pointer-events-none opacity-50"
+                              : "cursor-pointer"
+                          }
+                        />
+                      </PaginationItem>
+                    </PaginationContent>
+                  </Pagination>
+                </div>
+              </div>
+            )}
+          </>
         )}
       </div>
 
