@@ -317,7 +317,7 @@ export default function POSPage() {
           <h1 className="text-xl font-bold text-slate-900 hidden md:block">POS</h1>
 
           {/* Search Bar */}
-          <div className="relative max-w-md w-full ml-4">
+          <div className="relative max-w-md w-full ml-2 md:ml-4">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input
               id="product-search-input"
@@ -330,12 +330,14 @@ export default function POSPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2 md:gap-4">
           <div className="text-right hidden sm:block">
             <p className="text-sm font-medium text-slate-900">{session?.user?.name}</p>
           </div>
           <CustomerSearch selectedCustomer={selectedCustomer} onSelectCustomer={setSelectedCustomer} />
-          <KeyboardShortcutsHelp />
+          <div className="hidden md:block">
+            <KeyboardShortcutsHelp />
+          </div>
         </div>
       </div>
 

@@ -68,14 +68,20 @@ export function CustomerSearch({ onSelectCustomer, selectedCustomer }: CustomerS
                     variant="outline"
                     role="combobox"
                     aria-expanded={open}
-                    className="w-[200px] justify-between"
+                    className="w-10 p-0 md:w-[200px] md:px-4 justify-center md:justify-between"
                 >
                     {selectedCustomer ? (
-                        <span className="truncate">{selectedCustomer.fullName}</span>
+                        <>
+                            <User className="h-4 w-4 md:hidden" />
+                            <span className="truncate hidden md:inline">{selectedCustomer.fullName}</span>
+                        </>
                     ) : (
-                        <span className="text-slate-500">Select Customer...</span>
+                        <>
+                            <User className="h-4 w-4 md:hidden text-slate-500" />
+                            <span className="text-slate-500 hidden md:inline">Select Customer...</span>
+                        </>
                     )}
-                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                    <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50 hidden md:block" />
                 </Button>
             </PopoverTrigger>
             <PopoverContent className="w-[300px] p-0">
