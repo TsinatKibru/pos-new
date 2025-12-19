@@ -65,12 +65,16 @@ const sidebarSections: SidebarSection[] = [
     }
 ];
 
-export function Sidebar() {
+interface SidebarProps {
+    className?: string;
+}
+
+export function Sidebar({ className }: SidebarProps) {
     const pathname = usePathname();
     const { data: session } = useSession();
 
     return (
-        <div className="flex h-full w-64 flex-col bg-slate-900 text-slate-50">
+        <div className={cn("flex h-full w-64 flex-col bg-slate-900 text-slate-50", className)}>
             <div className="p-6">
                 <div className="flex items-center gap-2 font-bold text-xl">
                     <Store className="h-6 w-6 text-blue-400" />
