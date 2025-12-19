@@ -19,6 +19,7 @@ export default function SettingsPage() {
         currency: "USD",
         taxRate: 10,
         loyaltyRate: 1,
+        lowStockThreshold: 10,
     });
 
     useEffect(() => {
@@ -38,6 +39,7 @@ export default function SettingsPage() {
                 currency: data.currency || "USD",
                 taxRate: data.taxRate ? Number(data.taxRate) : 10,
                 loyaltyRate: data.loyaltyRate ? Number(data.loyaltyRate) : 1,
+                lowStockThreshold: data.lowStockThreshold ? Number(data.lowStockThreshold) : 10,
             });
         } catch (error) {
             console.error("Error fetching settings:", error);
@@ -59,6 +61,7 @@ export default function SettingsPage() {
                     ...formData,
                     taxRate: Number(formData.taxRate),
                     loyaltyRate: Number(formData.loyaltyRate),
+                    lowStockThreshold: Number(formData.lowStockThreshold),
                 }),
             });
 
@@ -178,6 +181,20 @@ export default function SettingsPage() {
                                     />
                                     <p className="text-xs text-slate-500">
                                         Configure earning rate above. Redemption value is fixed: 20 points = $1.00 discount.
+                                    </p>
+                                </div>
+                                <div className="space-y-2">
+                                    <Label htmlFor="lowStockThreshold">Low Stock Threshold</Label>
+                                    <Input
+                                        id="lowStockThreshold"
+                                        type="number"
+                                        min="1"
+                                        value={formData.lowStockThreshold}
+                                        onChange={(e) => setFormData({ ...formData, lowStockThreshold: Number(e.target.value) })}
+                                        placeholder="10"
+                                    />
+                                    <p className="text-xs text-slate-500">
+                                        Products below this quantity will be flagged as "Low Stock".
                                     </p>
                                 </div>
                             </div>

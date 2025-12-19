@@ -103,6 +103,10 @@ export default function InventoryPage() {
   }, [search, showLowStockOnly]);
 
   useEffect(() => {
+    fetchProducts();
+  }, [currentPage, pageSize, search, showLowStockOnly, lowStockThreshold]);
+
+  useEffect(() => {
     fetchSettings();
   }, []);
 
@@ -191,10 +195,10 @@ export default function InventoryPage() {
   };
 
   const getLowStockCount = () =>
-    products.filter((p) => p.stockQuantity < lowStockThreshold).length;
+    products.filter((p) => p.stockQuantity <= lowStockThreshold).length;
 
   const filteredProducts = showLowStockOnly
-    ? products.filter((p) => p.stockQuantity < lowStockThreshold)
+    ? products.filter((p) => p.stockQuantity <= lowStockThreshold)
     : products;
 
   const handleExport = () => {
@@ -210,7 +214,7 @@ export default function InventoryPage() {
       'Cost Price': p.cost,
       'Selling Price': p.price,
       'Total Value': (p.stockQuantity * p.cost).toFixed(2),
-      Status: p.stockQuantity < lowStockThreshold ? 'Low Stock' : 'In Stock'
+      Status: p.stockQuantity <= lowStockThreshold ? 'Low Stock' : 'In Stock'
     }));
 
     exportToCSV(exportData, `inventory-audit-${new Date().toISOString().split('T')[0]}`);
@@ -340,7 +344,7 @@ export default function InventoryPage() {
                   <TableBody>
                     {filteredProducts.map((product, index) => {
                       const totalValue = product.stockQuantity * Number(product.cost);
-                      const isLowStock = product.stockQuantity < lowStockThreshold;
+                      const isLowStock = product.stockQuantity <= lowStockThreshold;
                       const stockPercentage = Math.min((product.stockQuantity / (lowStockThreshold * 2)) * 100, 100);
 
                       return (
