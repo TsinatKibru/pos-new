@@ -1,6 +1,8 @@
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
+import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { ShoppingCart } from 'lucide-react';
 import { useSession } from 'next-auth/react';
 import { useRouter } from 'next/navigation';
 import { Product } from '@prisma/client';
@@ -386,8 +388,8 @@ export default function POSPage() {
           </ScrollArea>
         </div>
 
-        {/* Cart Sidebar */}
-        <div className="w-full md:w-[400px] shrink-0 bg-white border-l flex flex-col">
+        {/* Cart Sidebar (Desktop) */}
+        <div className="hidden md:flex w-[400px] shrink-0 bg-white border-l flex-col">
           <CartSummary
             items={cartItems}
             discountPercentage={discountPercentage}
@@ -398,6 +400,39 @@ export default function POSPage() {
             onCheckout={handleCheckout}
             isCheckingOut={isCheckingOut}
           />
+        </div>
+
+        {/* Mobile Cart Floating Bar */}
+        <div className="md:hidden fixed bottom-0 left-0 right-0 p-4 bg-white border-t border-slate-200 z-10">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button className="w-full flex justify-between items-center py-6">
+                <div className="flex items-center gap-2">
+                  <ShoppingCart className="h-5 w-5" />
+                  <span>{cartItems.reduce((acc, item) => acc + item.quantity, 0)} items</span>
+                </div>
+                <span className="font-bold text-lg">
+                  ${summary.total.toFixed(2)}
+                </span>
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="bottom" className="h-[90vh] p-0 rounded-t-xl">
+              <div className="h-full pt-6">
+                <CartSummary
+                  items={cartItems}
+                  discountPercentage={discountPercentage}
+                  taxRate={taxRate}
+                  onUpdateQuantity={handleUpdateQuantity}
+                  onRemoveItem={handleRemoveItem}
+                  onUpdateDiscount={setDiscountPercentage}
+                  onCheckout={() => {
+                    handleCheckout();
+                  }}
+                  isCheckingOut={isCheckingOut}
+                />
+              </div>
+            </SheetContent>
+          </Sheet>
         </div>
       </div>
 
