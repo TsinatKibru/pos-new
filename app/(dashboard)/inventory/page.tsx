@@ -83,7 +83,8 @@ export default function InventoryPage() {
     try {
       const res = await fetch(`/api/inventory/logs?productId=${product.id}`);
       if (res.ok) {
-        setStockLogs(await res.json());
+        const result = await res.json();
+        setStockLogs(result.data);
       }
     } catch (err) {
       console.error(err);
