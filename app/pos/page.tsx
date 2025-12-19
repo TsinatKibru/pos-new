@@ -352,7 +352,7 @@ export default function POSPage() {
             />
           </div>
 
-          <ScrollArea className="flex-1 px-4 md:px-0 pb-4">
+          <ScrollArea className="flex-1 px-4 md:px-0 pb-24 md:pb-4">
             {isLoadingProducts ? (
               <div className="flex items-center justify-center h-48 text-slate-500">
                 Loading products...
