@@ -68,6 +68,7 @@ export default function ProductsPage() {
   const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [productToDelete, setProductToDelete] = useState<string | null>(null);
+  const [lowStockThreshold, setLowStockThreshold] = useState(10);
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -78,6 +79,21 @@ export default function ProductsPage() {
   useEffect(() => {
     setCurrentPage(1); // Reset to page 1 when filters change
   }, [search, selectedCategory, showLowStock]);
+
+  useEffect(() => {
+    const fetchSettings = async () => {
+      try {
+        const res = await fetch('/api/settings/inventory');
+        if (res.ok) {
+          const data = await res.json();
+          setLowStockThreshold(data.lowStockThreshold);
+        }
+      } catch (error) {
+        console.error('Failed to fetch settings:', error);
+      }
+    };
+    fetchSettings();
+  }, []);
 
   useEffect(() => {
     fetchProducts();
@@ -206,7 +222,7 @@ export default function ProductsPage() {
   };
 
   const lowStockCount = products.filter(
-    (p) => p.stockQuantity <= 10 && p.isActive
+    (p) => p.stockQuantity <= lowStockThreshold && p.isActive
   ).length;
 
   return (

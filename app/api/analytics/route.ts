@@ -75,18 +75,23 @@ export async function GET() {
       })(),
 
       // 4. Low Stock Products
-      prisma.product.findMany({
-        where: {
-          stockQuantity: { lte: 10 }, // Default threshold, could be from settings
-        },
-        select: {
-          id: true,
-          name: true,
-          stockQuantity: true,
-        },
-        take: 5,
-        orderBy: { stockQuantity: 'asc' },
-      }),
+      (async () => {
+        const settings = await prisma.storeSettings.findFirst();
+        const threshold = settings?.lowStockThreshold ?? 10;
+
+        return prisma.product.findMany({
+          where: {
+            stockQuantity: { lte: threshold },
+          },
+          select: {
+            id: true,
+            name: true,
+            stockQuantity: true,
+          },
+          take: 5,
+          orderBy: { stockQuantity: 'asc' },
+        });
+      })(),
     ]);
 
     return NextResponse.json({

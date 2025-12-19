@@ -103,8 +103,20 @@ export default function InventoryPage() {
   }, [search, showLowStockOnly]);
 
   useEffect(() => {
-    fetchProducts();
-  }, [currentPage, pageSize, search, showLowStockOnly]);
+    fetchSettings();
+  }, []);
+
+  const fetchSettings = async () => {
+    try {
+      const res = await fetch('/api/settings/inventory');
+      if (res.ok) {
+        const data = await res.json();
+        setLowStockThreshold(data.lowStockThreshold);
+      }
+    } catch (error) {
+      console.error('Failed to fetch settings:', error);
+    }
+  };
 
   const fetchProducts = async () => {
     try {
@@ -627,9 +639,23 @@ export default function InventoryPage() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => {
-                setSettingsDialog(false);
-                fetchProducts();
+              onClick={async () => {
+                try {
+                  const res = await fetch('/api/settings/inventory', {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ lowStockThreshold }),
+                  });
+
+                  if (!res.ok) throw new Error('Failed to update settings');
+
+                  toast.success('Settings updated');
+                  setSettingsDialog(false);
+                  fetchProducts();
+                } catch (error) {
+                  toast.error('Failed to update settings');
+                  console.error(error);
+                }
               }}
             >
               Close

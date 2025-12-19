@@ -50,7 +50,9 @@ export async function GET(request: NextRequest) {
     }
 
     if (lowStock === 'true') {
-      where.stockQuantity = { lte: 10 };
+      const settings = await prisma.storeSettings.findFirst();
+      const threshold = settings?.lowStockThreshold ?? 10;
+      where.stockQuantity = { lte: threshold };
     }
 
     // Fetch paginated data and total count in parallel
