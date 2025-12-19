@@ -52,10 +52,16 @@ export default function POSPage() {
   const [selectedCustomer, setSelectedCustomer] = useState<Customer | null>(null);
   const [storeSettings, setStoreSettings] = useState<StoreSettings | null>(null);
 
-  // New State for Categories and Grid
+  // State for Categories, Grid, and Pagination
   const [categories, setCategories] = useState<any[]>([]);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize] = useState(24);
+  const [totalPages, setTotalPages] = useState(1);
+  const [isLoadingProducts, setIsLoadingProducts] = useState(false);
 
   // Authentication Check
   useEffect(() => {
@@ -81,29 +87,55 @@ export default function POSPage() {
     fetchSettings();
   }, []);
 
-  // Fetch Products and Categories
+  // Fetch Categories
   useEffect(() => {
-    const fetchData = async () => {
+    const fetchCategories = async () => {
       try {
-        const [productsRes, categoriesRes] = await Promise.all([
-          fetch('/api/products'),
-          fetch('/api/categories')
-        ]);
-
-        if (productsRes.ok) {
-          const data = await productsRes.json();
-          setProducts(data.data || []);
-        }
-
-        if (categoriesRes.ok) {
-          setCategories(await categoriesRes.json());
-        }
+        const res = await fetch('/api/categories');
+        if (res.ok) setCategories(await res.json());
       } catch (error) {
-        toast.error('Failed to load POS data');
+        console.error('Failed to load categories:', error);
       }
     };
-    fetchData();
+    fetchCategories();
   }, []);
+
+  // Fetch Products with Pagination and Search
+  useEffect(() => {
+    const fetchProducts = async () => {
+      try {
+        setIsLoadingProducts(true);
+        const params = new URLSearchParams();
+        if (searchQuery) params.append('search', searchQuery);
+        if (selectedCategoryId) params.append('categoryId', selectedCategoryId);
+        params.append('page', currentPage.toString());
+        params.append('limit', pageSize.toString());
+
+        const res = await fetch(`/api/products?${params}`);
+        if (res.ok) {
+          const data = await res.json();
+          setProducts(data.data);
+          setTotalPages(data.pagination.totalPages);
+        }
+      } catch (error) {
+        toast.error('Failed to load products');
+      } finally {
+        setIsLoadingProducts(false);
+      }
+    };
+
+    // Debounce search
+    const timeoutId = setTimeout(() => {
+      fetchProducts();
+    }, 300);
+
+    return () => clearTimeout(timeoutId);
+  }, [searchQuery, selectedCategoryId, currentPage, pageSize]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedCategoryId]);
 
   // Handlers
   const handleAddToCart = useCallback((product: Product) => {
@@ -248,17 +280,7 @@ export default function POSPage() {
     }
   };
 
-  // Filter products
-  const filteredProducts = products.filter(product => {
-    const matchesSearch = searchQuery === '' ||
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.barcode?.toLowerCase().includes(searchQuery.toLowerCase());
 
-    const matchesCategory = selectedCategoryId === null || product.categoryId === selectedCategoryId;
-
-    return matchesSearch && matchesCategory;
-  });
 
   // Shortcuts
   useHotkeys('F2', () => {
@@ -327,7 +349,40 @@ export default function POSPage() {
           </div>
 
           <ScrollArea className="flex-1 px-4 md:px-0 pb-4">
-            <ProductGrid products={filteredProducts} onAddToCart={handleAddToCart} />
+            {isLoadingProducts ? (
+              <div className="flex items-center justify-center h-48 text-slate-500">
+                Loading products...
+              </div>
+            ) : (
+              <>
+                <ProductGrid products={products} onAddToCart={handleAddToCart} />
+
+                {/* Pagination */}
+                {products.length > 0 && (
+                  <div className="flex justify-center items-center gap-4 py-6">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                      disabled={currentPage === 1}
+                    >
+                      Previous
+                    </Button>
+                    <span className="text-sm text-slate-600">
+                      Page {currentPage} of {totalPages}
+                    </span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                      disabled={currentPage === totalPages}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                )}
+              </>
+            )}
           </ScrollArea>
         </div>
 
